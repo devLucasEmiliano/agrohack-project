@@ -1,6 +1,6 @@
 # Copilot instructions for agrohack-project
 
-Purpose: Help AI coding agents work productively in this Next.js 16 + App Router project using shadcn/ui, Radix UI, Tailwind v4..
+Purpose: Help AI coding agents work productively in this Next.js 16 + App Router project using shadcn/ui, Radix UI, Tailwind v4.
 
 ## Architecture and routing
 

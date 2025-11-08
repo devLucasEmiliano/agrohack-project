@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/lib/auth-context"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Menu, LogOut } from "lucide-react"
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Menu, LogOut } from "lucide-react";
 
 export function Header() {
-  const { user, logout } = useAuth()
-  const router = useRouter()
+  const { user, logout } = useAuth();
+  const router = useRouter();
 
   const handleLogout = () => {
-    logout()
-    router.push("/auth/login")
-  }
+    logout();
+    router.push("/auth/login");
+  };
 
   return (
     <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
@@ -30,11 +30,16 @@ export function Header() {
           <p className="text-sm font-medium text-foreground">{user?.name}</p>
           <p className="text-xs text-muted-foreground">{user?.email}</p>
         </div>
-        <Button onClick={handleLogout} variant="ghost" size="sm" className="text-foreground hover:bg-secondary">
+        <Button
+          onClick={handleLogout}
+          variant="ghost"
+          size="sm"
+          className="text-foreground hover:bg-secondary"
+        >
           <LogOut className="w-4 h-4 mr-2" />
           <span className="hidden sm:inline">Sair</span>
         </Button>
       </div>
     </header>
-  )
+  );
 }

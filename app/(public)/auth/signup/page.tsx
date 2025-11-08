@@ -40,7 +40,8 @@ const initialFormState: Record<FieldName, string> = {
   confirmPassword: "",
 };
 
-const registerEndpoint = process.env.REGISTER_ENV || "";
+const registerEndpoint =
+  process.env.NEXT_PUBLIC_REGISTER_ENV || process.env.REGISTER_ENV || "";
 
 const AnimatedField = ({
   isVisible,

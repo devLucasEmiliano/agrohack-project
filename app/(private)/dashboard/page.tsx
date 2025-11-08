@@ -1,19 +1,29 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/lib/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Clock, FileText, BarChart3, Users } from "lucide-react"
+import { useAuth } from "@/lib/auth-context";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Clock, FileText, BarChart3, Users } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   return (
     <div className="p-6 md:p-8 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Bem-vindo, {user?.name}</h1>
-        <p className="text-muted-foreground">Gerencie seus registros de horas trabalhadas</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          Bem-vindo, {user?.name}
+        </h1>
+        <p className="text-muted-foreground">
+          Gerencie seus registros de horas trabalhadas
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -86,7 +96,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <Link href="/dashboard/employees">
-              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">Gerenciar</Button>
+              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                Gerenciar
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -101,10 +113,12 @@ export default function DashboardPage() {
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <p>Nenhum registro ainda</p>
-            <p className="text-sm">Comece clicando em &quot;Registrar Horas&quot;</p>
+            <p className="text-sm">
+              Comece clicando em &quot;Registrar Horas&quot;
+            </p>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

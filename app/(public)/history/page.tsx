@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
-import { useState } from "react"
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
 
 interface PublicRecord {
-  id: string
+  id: string;
 }
 
 export default function HistoryPage() {
-  const router = useRouter()
-  const [registros] = useState<PublicRecord[]>([])
+  const router = useRouter();
+  const [registros] = useState<PublicRecord[]>([]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,7 +22,9 @@ export default function HistoryPage() {
             <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Histórico de Registros</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+              Histórico de Registros
+            </h1>
           </div>
           <Button
             variant="ghost"
@@ -38,13 +40,17 @@ export default function HistoryPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {registros.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">Nenhum registro encontrado</p>
-            <Button onClick={() => router.push("/register")}>Fazer Primeiro Registro</Button>
+            <p className="text-muted-foreground mb-4">
+              Nenhum registro encontrado
+            </p>
+            <Button onClick={() => router.push("/register")}>
+              Fazer Primeiro Registro
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">{/* Registros aqui */}</div>
         )}
       </div>
     </div>
-  )
+  );
 }

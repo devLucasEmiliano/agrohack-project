@@ -145,7 +145,9 @@ export default function HistoryPage() {
               <div className="flex items-start gap-3 text-destructive">
                 <AlertCircle className="w-5 h-5 mt-0.5" />
                 <div>
-                  <p className="font-semibold mb-1">Erro ao carregar histórico</p>
+                  <p className="font-semibold mb-1">
+                    Erro ao carregar histórico
+                  </p>
                   <p className="text-sm">{error}</p>
                 </div>
               </div>

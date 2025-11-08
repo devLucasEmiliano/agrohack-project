@@ -152,9 +152,8 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
 
     try {
       const payload = {
-        nomeCompleto: formData.nome.trim(),
-        matricula: formData.matricula.trim(),
-        data_nascimento: "", // Campo não coletado no formulário público
+        OPERADOR_NOME: formData.nome.trim(),
+        OPERADOR_MATRICULA: formData.matricula.trim(),
       };
 
       const hoursRecords = await fetchEmployeeHours(payload);

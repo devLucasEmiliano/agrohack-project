@@ -378,9 +378,8 @@ export async function deleteEmployee(
  * Payload para buscar horas do funcionário
  */
 export interface FetchEmployeeHoursPayload {
-  nomeCompleto: string;
-  matricula: string;
-  data_nascimento: string;
+  OPERADOR_NOME: string;
+  OPERADOR_MATRICULA: string;
 }
 
 /**
@@ -412,7 +411,7 @@ export interface EmployeeHoursRecord {
 /**
  * Busca os registros de horas de um funcionário via API
  *
- * @param employeeData - Dados do funcionário (nome, matrícula, data de nascimento)
+ * @param employeeData - Dados do funcionário (OPERADOR_NOME e OPERADOR_MATRICULA)
  * @returns Promise com array de registros de horas
  * @throws Error se a requisição falhar
  */
@@ -445,11 +444,21 @@ export async function fetchEmployeeHours(
       throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
     }
 
-    const data: EmployeeHoursRecord[] = await response.json();
+    // Verifica se há conteúdo na resposta
+    const text = await response.text();
+    if (!text || text.trim() === "") {
+      console.log("Resposta vazia da API - nenhum registro encontrado");
+      return [];
+    }
 
-    console.log(`${data.length} registro(s) de horas encontrado(s)`);
-
-    return data;
+    try {
+      const data: EmployeeHoursRecord[] = JSON.parse(text);
+      console.log(`${data.length} registro(s) de horas encontrado(s)`);
+      return Array.isArray(data) ? data : [];
+    } catch (parseError) {
+      console.error("Erro ao parsear JSON:", parseError);
+      throw new Error("Resposta inválida da API. Tente novamente.");
+    }
   } catch (error) {
     console.error("Erro ao buscar horas do funcionário:", error);
 

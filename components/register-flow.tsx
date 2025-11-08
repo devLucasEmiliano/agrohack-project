@@ -84,7 +84,7 @@ export function RegisterFlow({ mode = "dashboard" }: RegisterFlowProps) {
     );
   }
 
-  return <ChatBot onSubmit={handleChatbotSubmit} />;
+  return <ChatBot onSubmit={handleChatbotSubmit} mode={mode} />;
 }
 
 export default RegisterFlow;

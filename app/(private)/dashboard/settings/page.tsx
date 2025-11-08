@@ -18,7 +18,7 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     logout();
-    router.push("/auth/login");
+    router.push("/");
   };
 
   return (
@@ -76,7 +76,7 @@ export default function SettingsPage() {
             Sair da Conta
           </CardTitle>
           <CardDescription>
-            Você será desconectado e redirecionado para o login
+            Você será desconectado e redirecionado para a página inicial
           </CardDescription>
         </CardHeader>
         <CardContent>

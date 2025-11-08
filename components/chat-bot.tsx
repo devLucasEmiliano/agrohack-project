@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import {
+  ArrowLeft,
   ChevronRight,
   MessageCircle,
   Clock,
@@ -112,7 +113,12 @@ const buildInitialFormState = (): Partial<FormData> => {
   };
 };
 
-function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
+interface ChatBotProps {
+  onSubmit: (data: FormData) => void;
+  mode?: "dashboard" | "public";
+}
+
+function ChatBot({ onSubmit, mode = "dashboard" }: ChatBotProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<Partial<FormData>>(
     buildInitialFormState
@@ -284,6 +290,19 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4 flex items-center justify-center">
       <Card className="w-full max-w-2xl shadow-lg">
+        {mode === "public" && (
+          <div className="p-4 border-b border-border">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => (window.location.href = "/")}
+              className="gap-2 -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
+            </Button>
+          </div>
+        )}
         <div className="bg-primary p-4 sm:p-6 text-primary-foreground rounded-t-lg">
           <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
             <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8 shrink-0" />

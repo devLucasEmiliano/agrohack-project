@@ -16,6 +16,7 @@ import {
 } from "@/lib/api-service";
 import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle2,
   Clock,
   FileText,
@@ -87,8 +88,7 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
     const query = formData.nome.toLowerCase();
     return employees.filter(
       (emp) =>
-        emp.NOME.toLowerCase().includes(query) ||
-        emp.MATRICULA.includes(query)
+        emp.NOME.toLowerCase().includes(query) || emp.MATRICULA.includes(query)
     );
   }, [formData.nome, employees, variant]);
 
@@ -152,8 +152,9 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
 
     try {
       const payload = {
-        OPERADOR_NOME: formData.nome.trim(),
-        OPERADOR_MATRICULA: formData.matricula.trim(),
+        nomeCompleto: formData.nome.trim(),
+        matricula: formData.matricula.trim(),
+        data_nascimento: "", // Campo não coletado no formulário público
       };
 
       const hoursRecords = await fetchEmployeeHours(payload);
@@ -165,10 +166,7 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
       }
 
       const sorted = [...hoursRecords].sort((a, b) => {
-        return (
-          getRecordTimestamp(b) -
-          getRecordTimestamp(a)
-        );
+        return getRecordTimestamp(b) - getRecordTimestamp(a);
       });
 
       setRecords(sorted);
@@ -202,7 +200,7 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
       )}
     >
       {variant === "public" && (
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-primary/10" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-primary/10 via-transparent to-primary/10" />
       )}
       <div
         className={cn(
@@ -211,6 +209,17 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
         )}
       >
         <Card className="p-6 md:p-8 shadow-xl border border-border/60 bg-card/95 space-y-6">
+          {variant === "public" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/")}
+              className="gap-2 -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
+            </Button>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <h1 className="text-2xl font-bold text-foreground">
@@ -314,7 +323,9 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
                 <InfoChip
                   icon={<Clock className="w-4 h-4" />}
                   label="Registrado em"
-                  value={formatDate(latestRecord.createdAt || latestRecord.DATA)}
+                  value={formatDate(
+                    latestRecord.createdAt || latestRecord.DATA
+                  )}
                 />
               </div>
 

@@ -96,31 +96,20 @@ export default function LandingPage() {
     };
   }, []);
 
-  const redirectTo = (target: string) =>
-    `/auth/login?redirect=${encodeURIComponent(target)}`;
-
   const handleDashboardClick = () => {
     if (user) {
       router.push("/dashboard");
     } else {
-      router.push(redirectTo("/dashboard"));
+      router.push("/auth/login");
     }
   };
 
   const handleRegisterClick = () => {
-    if (user) {
-      router.push("/dashboard/register");
-    } else {
-      router.push(redirectTo("/dashboard/register"));
-    }
+    router.push("/registerHours");
   };
 
   const handleConsultClick = () => {
-    if (user) {
-      router.push("/dashboard/consult");
-    } else {
-      router.push("/consultHours");
-    }
+    router.push("/consultHours");
   };
 
   return (

@@ -398,6 +398,7 @@ export interface EmployeeHoursRecord {
   IMPLEMENTO_PREFIXO: string;
   HORIMETRO_INICIAL: string;
   HORIMETRO_FINAL: string;
+  HORA_INICIAL?: string;
   HORA_FINAL: string;
   TOTAL_SERVICO: string;
   ABASTECIMENTO: string;

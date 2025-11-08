@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -16,11 +16,8 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import {
-  OPERATORS_DATABASE,
-  SERVICOS,
-  RA_DATABASE,
-} from "@/lib/operators-data";
+import { SERVICOS, RA_DATABASE } from "@/lib/operators-data";
+import { fetchEmployees, type EmployeeFromAPI } from "@/lib/api-service";
 
 export type FormData = {
   operador: string;
@@ -76,7 +73,13 @@ const STEP_REQUIREMENTS: Record<number, string[]> = {
   0: ["operador", "matricula", "localServico", "raSignla", "comunidade"],
   1: ["processo", "data", "horaInicio", "horaFim"],
   2: ["maquina", "prefixoMaquina", "implementos", "prefixoImplementos"],
-  3: ["horimetroInicial", "horimetroFinal", "totalServico", "unidadeServico", "servicos"],
+  3: [
+    "horimetroInicial",
+    "horimetroFinal",
+    "totalServico",
+    "unidadeServico",
+    "servicos",
+  ],
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -111,23 +114,52 @@ const buildInitialFormState = (): Partial<FormData> => {
   };
 };
 
-
 function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [loadingGPS, setLoadingGPS] = useState(false);
-  const [formData, setFormData] =
-    useState<Partial<FormData>>(buildInitialFormState);
+  const [formData, setFormData] = useState<Partial<FormData>>(
+    buildInitialFormState
+  );
   const [stepAttempted, setStepAttempted] = useState(false);
   const [userEditedTotal, setUserEditedTotal] = useState(false);
+
+  // Estado para funcionários da API
+  const [employees, setEmployees] = useState<EmployeeFromAPI[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [employeesError, setEmployeesError] = useState<string | null>(null);
+
+  // Carrega funcionários da API ao montar o componente
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const data = await fetchEmployees();
+        setEmployees(data);
+        console.log(
+          `${data.length} funcionário(s) carregado(s) para registro de horas`
+        );
+      } catch (error) {
+        console.error("Erro ao carregar funcionários:", error);
+        setEmployeesError(
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar lista de funcionários"
+        );
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+
+    loadEmployees();
+  }, []);
 
   const filteredOperators = useMemo(() => {
     if (!formData.operador) return [];
     const query = (formData.operador as string).toLowerCase();
-    return OPERATORS_DATABASE.filter(
-      (op) =>
-        op.nome.toLowerCase().includes(query) || op.matricula.includes(query)
+    return employees.filter(
+      (emp) =>
+        emp.NOME.toLowerCase().includes(query) || emp.MATRICULA.includes(query)
     );
-  }, [formData.operador]);
+  }, [formData.operador, employees]);
 
   const filteredRA = useMemo(() => {
     if (!formData.raSignla) return [];
@@ -158,54 +190,45 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
     return Boolean(value);
   };
 
-  const missingFields = useMemo(() => {
-    const required = STEP_REQUIREMENTS[currentStep] || [];
-    return required.filter((field) => !isFieldFilled(field));
-  }, [currentStep, formData, hasSelectedService]);
-
+  const requiredFields = STEP_REQUIREMENTS[currentStep] || [];
+  const missingFields = requiredFields.filter((field) => !isFieldFilled(field));
   const canProceed = missingFields.length === 0;
-
-  useEffect(() => {
-    if (stepAttempted && missingFields.length === 0) {
-      setStepAttempted(false);
-    }
-  }, [missingFields.length, stepAttempted]);
-
-  useEffect(() => {
-    if (userEditedTotal) return;
-    const start = parseFloat(formData.horimetroInicial || "");
-    const end = parseFloat(formData.horimetroFinal || "");
-    if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
-      return;
-    }
-    const diff = (end - start).toFixed(1);
-    setFormData((prev) => {
-      if (prev.totalServico === diff) {
-        return prev;
-      }
-      return {
-        ...prev,
-        totalServico: diff,
-      };
-    });
-  }, [formData.horimetroInicial, formData.horimetroFinal, userEditedTotal]);
 
   const handleInputChange = (field: string, value: string) => {
     if (field === "totalServico") {
       setUserEditedTotal(Boolean(value.trim()));
     }
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setStepAttempted(false);
+    setFormData((prev) => {
+      const next: Partial<FormData> = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (
+        !userEditedTotal &&
+        (field === "horimetroInicial" || field === "horimetroFinal")
+      ) {
+        const start = parseFloat(
+          field === "horimetroInicial" ? value : next.horimetroInicial || ""
+        );
+        const end = parseFloat(
+          field === "horimetroFinal" ? value : next.horimetroFinal || ""
+        );
+        if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
+          next.totalServico = (end - start).toFixed(1);
+        }
+      }
+
+      return next;
+    });
   };
 
-  const handleSelectOperator = (operator: (typeof OPERATORS_DATABASE)[0]) => {
+  const handleSelectOperator = (operator: EmployeeFromAPI) => {
     setFormData((prev) => ({
       ...prev,
-      operador: operator.nome,
-      matricula: operator.matricula,
-      // Dados adicionais de operador podem ser preenchidos manualmente
+      operador: operator.NOME,
+      matricula: operator.MATRICULA,
     }));
   };
 
@@ -217,7 +240,7 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
     }));
   };
 
-  const handleGetGPSLocation = useCallback(() => {
+  const handleGetGPSLocation = () => {
     setLoadingGPS(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -235,9 +258,10 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
         }
       );
     }
-  }, []);
+  };
 
   const handleServiceToggle = (serviceId: string, unidade: string) => {
+    setStepAttempted(false);
     setFormData((prev) => {
       const current = { ...(prev.servicos || {}) };
       if (current[serviceId]?.selected) {
@@ -304,6 +328,43 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
             {step.title}
           </h2>
 
+          {/* Aviso de carregamento/erro de funcionários */}
+          {currentStep === 0 && loadingEmployees && (
+            <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500 rounded-md">
+              <Loader2 className="w-5 h-5 text-blue-500 animate-spin shrink-0" />
+              <p className="text-sm text-blue-700 dark:text-blue-400">
+                Carregando lista de funcionários...
+              </p>
+            </div>
+          )}
+
+          {currentStep === 0 && !loadingEmployees && employeesError && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive rounded-md">
+              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-destructive">
+                  Erro ao carregar funcionários
+                </p>
+                <p className="text-xs text-destructive/90 mt-1">
+                  {employeesError}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 0 &&
+            !loadingEmployees &&
+            !employeesError &&
+            employees.length === 0 && (
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500 rounded-md">
+                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  Nenhum funcionário cadastrado. Apenas funcionários cadastrados
+                  podem registrar horas.
+                </p>
+              </div>
+            )}
+
           {currentStep === 0 && (
             <div className="space-y-3 sm:space-y-4">
               <div>
@@ -325,10 +386,10 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
                         className="w-full px-3 py-2 text-left hover:bg-secondary border-b border-border last:border-b-0 transition-colors"
                       >
                         <div className="font-medium text-sm text-card-foreground">
-                          {op.nome}
+                          {op.NOME}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Mat: {op.matricula}
+                          Mat: {op.MATRICULA}
                         </div>
                       </button>
                     ))}

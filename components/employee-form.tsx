@@ -10,6 +10,7 @@ import {
   type Employee,
   addEmployee,
   updateEmployee,
+  getEmployees,
 } from "@/lib/employees-data";
 import { registerEmployee } from "@/lib/api-service";
 import { X, Loader2, AlertCircle, CheckCircle } from "lucide-react";
@@ -40,8 +41,60 @@ export default function EmployeeForm({
     setError(null);
     setSuccess(false);
 
+    // Validação de campos obrigatórios
     if (!form.name || !form.matricula || !form.dataNascimento) {
       setError("Preencha todos os campos");
+      return;
+    }
+
+    // Validação de nome (mínimo 3 caracteres)
+    if (form.name.trim().length < 3) {
+      setError("Nome deve ter pelo menos 3 caracteres");
+      return;
+    }
+
+    // Validação de matrícula (não vazia)
+    if (form.matricula.trim().length === 0) {
+      setError("Matrícula não pode estar vazia");
+      return;
+    }
+
+    // Validação de matrícula duplicada (apenas para novo cadastro)
+    if (!employee) {
+      const existingEmployees = getEmployees();
+      const duplicateMatricula = existingEmployees.find(
+        (emp) => emp.matricula === form.matricula.trim()
+      );
+      if (duplicateMatricula) {
+        setError(
+          `Matrícula "${form.matricula}" já está cadastrada para ${duplicateMatricula.name}`
+        );
+        return;
+      }
+    }
+
+    // Validação de data (não pode ser futura)
+    const selectedDate = new Date(form.dataNascimento);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate > today) {
+      setError("Data de nascimento não pode ser futura");
+      return;
+    }
+
+    // Validação de idade mínima (14 anos)
+    const minAge = new Date();
+    minAge.setFullYear(minAge.getFullYear() - 14);
+    if (selectedDate > minAge) {
+      setError("Funcionário deve ter pelo menos 14 anos");
+      return;
+    }
+
+    // Validação de idade máxima (120 anos)
+    const maxAge = new Date();
+    maxAge.setFullYear(maxAge.getFullYear() - 120);
+    if (selectedDate < maxAge) {
+      setError("Data de nascimento inválida");
       return;
     }
 
@@ -49,13 +102,22 @@ export default function EmployeeForm({
 
     try {
       if (employee) {
-        // Atualização: apenas atualiza localmente (não envia para API)
+        // Atualização: atualiza localmente
+        // Nota: Quando houver API de edição, adicionar chamada aqui
         updateEmployee(employee.id, form);
         onSave({ ...employee, ...form });
         setSuccess(true);
+
+        console.log("Funcionário atualizado localmente:", {
+          id: employee.id,
+          ...form,
+        });
+
+        // Fecha o formulário após sucesso
         setTimeout(() => {
           setSuccess(false);
-        }, 2000);
+          onCancel();
+        }, 1500);
       } else {
         // Cadastro novo: envia para API
         // Transforma data do formato YYYY-MM-DD para DD/MM/YYYY
@@ -133,10 +195,28 @@ export default function EmployeeForm({
         </div>
       )}
 
+      {/* Informações do Funcionário (quando editando) */}
+      {employee && (
+        <div className="p-3 bg-muted/50 border border-border rounded-md space-y-1">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium">ID:</span> {employee.id}
+          </p>
+          {employee.createdAt && (
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">Cadastrado em:</span>{" "}
+              {new Date(employee.createdAt).toLocaleString("pt-BR")}
+            </p>
+          )}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Nome Completo
+            Nome Completo{" "}
+            {employee && (
+              <span className="text-xs text-muted-foreground">(editando)</span>
+            )}
           </label>
           <Input
             type="text"
@@ -150,7 +230,10 @@ export default function EmployeeForm({
 
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Matrícula
+            Matrícula{" "}
+            {employee && (
+              <span className="text-xs text-muted-foreground">(editando)</span>
+            )}
           </label>
           <Input
             type="text"
@@ -158,13 +241,22 @@ export default function EmployeeForm({
             onChange={(e) => setForm({ ...form, matricula: e.target.value })}
             placeholder="Número da matrícula"
             className="bg-background border-input"
-            disabled={loading}
+            disabled={loading || !!employee}
+            title={employee ? "Matrícula não pode ser alterada" : ""}
           />
+          {employee && (
+            <p className="text-xs text-muted-foreground mt-1">
+              ℹ️ A matrícula não pode ser alterada após o cadastro
+            </p>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Data de Nascimento
+            Data de Nascimento{" "}
+            {employee && (
+              <span className="text-xs text-muted-foreground">(editando)</span>
+            )}
           </label>
           <Input
             type="date"
@@ -174,6 +266,7 @@ export default function EmployeeForm({
             }
             className="bg-background border-input"
             disabled={loading}
+            max={new Date().toISOString().split("T")[0]}
           />
         </div>
 

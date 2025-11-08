@@ -21,13 +21,13 @@ import {
 } from "lucide-react";
 
 interface EmployeesListProps {
-  onEdit: (employee: Employee) => void;
+  onEdit?: (employee: Employee) => void; // Opcional - função de editar oculta temporariamente
   onAdd: () => void;
   refreshTrigger?: number;
 }
 
 export default function EmployeesList({
-  onEdit,
+  onEdit, // Função de editar oculta temporariamente
   onAdd,
   refreshTrigger,
 }: EmployeesListProps) {
@@ -208,15 +208,18 @@ export default function EmployeesList({
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEdit(employee)}
-                    className="gap-2"
-                    title="Editar funcionário"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
+                  {/* Botão de editar oculto temporariamente */}
+                  {onEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEdit(employee)}
+                      className="gap-2"
+                      title="Editar funcionário"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
                     size="sm"

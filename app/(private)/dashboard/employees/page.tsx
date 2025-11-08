@@ -24,10 +24,11 @@ export default function EmployeesPage() {
     setShowForm(true);
   };
 
-  const handleEdit = (employee: Employee) => {
-    setEditingEmployee(employee);
-    setShowForm(true);
-  };
+  // Função de edição oculta temporariamente
+  // const handleEdit = (employee: Employee) => {
+  //   setEditingEmployee(employee);
+  //   setShowForm(true);
+  // };
 
   const handleCancel = () => {
     setEditingEmployee(undefined);
@@ -59,7 +60,7 @@ export default function EmployeesPage() {
 
         <div className={showForm ? "lg:col-span-2" : "lg:col-span-3"}>
           <EmployeesList
-            onEdit={handleEdit}
+            // onEdit={handleEdit} // Oculto temporariamente
             onAdd={handleAdd}
             refreshTrigger={refreshTrigger}
           />

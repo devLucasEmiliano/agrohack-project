@@ -57,15 +57,7 @@ function persistCookie(user: User | null) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => readStoredUser());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const storedUser = readStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-    setLoading(false);
-  }, []);
+  const loading = false;
 
   useEffect(() => {
     if (typeof window === "undefined") return;

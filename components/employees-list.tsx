@@ -179,7 +179,10 @@ export default function EmployeesList({
       {!loading || employees.length > 0 ? (
         <div className="grid gap-3">
           {filtered.map((employee) => (
-            <Card key={employee.id} className="p-4 hover:shadow-md transition-shadow">
+            <Card
+              key={employee.id}
+              className="p-4 hover:shadow-md transition-shadow"
+            >
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1">
                   <h3 className="font-medium text-foreground text-lg">

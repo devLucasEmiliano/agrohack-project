@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
 
+interface PublicRecord {
+  id: string
+}
+
 export default function HistoryPage() {
   const router = useRouter()
-  const [registros] = useState<any[]>([])
+  const [registros] = useState<PublicRecord[]>([])
 
   return (
     <div className="min-h-screen bg-background">

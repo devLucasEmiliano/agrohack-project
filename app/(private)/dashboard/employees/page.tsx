@@ -9,7 +9,7 @@ export default function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>()
   const [refreshKey, setRefreshKey] = useState(0)
 
-  const handleSave = (employee: Employee) => {
+  const handleSave = () => {
     setEditingEmployee(undefined)
     setRefreshKey((prev) => prev + 1)
   }

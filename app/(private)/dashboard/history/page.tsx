@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,31 +14,25 @@ interface WorkRecord extends FormData {
 }
 
 export default function HistoryPage() {
-  const { user } = useAuth()
-  const [records, setRecords] = useState<WorkRecord[]>([])
-  const [filteredRecords, setFilteredRecords] = useState<WorkRecord[]>([])
+  // Access user if needed later (kept to avoid future unused removal decisions)
+  useAuth()
+  const [records, setRecords] = useState<WorkRecord[]>(() => {
+    try {
+      const stored = localStorage.getItem("workRecords")
+      if (!stored) return []
+      return JSON.parse(stored)
+    } catch {
+      return []
+    }
+  })
   const [searchTerm, setSearchTerm] = useState("")
   const [filterDate, setFilterDate] = useState("")
   const [selectedRecord, setSelectedRecord] = useState<WorkRecord | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Loading considered true until first render completes (records already loaded lazily)
+  const loading = false
 
-  useEffect(() => {
-    const stored = localStorage.getItem("workRecords")
-    if (stored) {
-      try {
-        const allRecords = JSON.parse(stored)
-        setRecords(allRecords)
-        setFilteredRecords(allRecords)
-      } catch (err) {
-        console.error("Error loading records:", err)
-      }
-    }
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
+  const filteredRecords = useMemo(() => {
     let filtered = records
-
     if (searchTerm) {
       filtered = filtered.filter(
         (r) =>
@@ -47,18 +41,16 @@ export default function HistoryPage() {
           r.localServico?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
-
     if (filterDate) {
       filtered = filtered.filter((r) => r.data === filterDate)
     }
-
-    setFilteredRecords(filtered)
-  }, [searchTerm, filterDate, records])
+    return filtered
+  }, [records, searchTerm, filterDate])
 
   const handleDelete = (id: string) => {
     if (confirm("Tem certeza que deseja deletar este registro?")) {
       const updated = records.filter((r) => r.id !== id)
-      setRecords(updated)
+  setRecords(updated)
       localStorage.setItem("workRecords", JSON.stringify(updated))
     }
   }

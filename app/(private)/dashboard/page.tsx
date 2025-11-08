@@ -101,7 +101,7 @@ export default function DashboardPage() {
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <p>Nenhum registro ainda</p>
-            <p className="text-sm">Comece clicando em "Registrar Horas"</p>
+            <p className="text-sm">Comece clicando em &quot;Registrar Horas&quot;</p>
           </div>
         </CardContent>
       </Card>

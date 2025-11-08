@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useState } from "react"
 
 interface User {
   id: string
@@ -24,26 +24,22 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const stored = localStorage.getItem("currentUser")
-    if (stored) {
-      try {
-        const userData = JSON.parse(stored)
-        setUser({
-          id: userData.id,
-          name: userData.name,
-          email: userData.email,
-          createdAt: userData.createdAt,
-        })
-      } catch (err) {
-        setUser(null)
-      }
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem("currentUser")
+      if (!stored) return null
+      const userData = JSON.parse(stored)
+      return {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        createdAt: userData.createdAt,
+      } as User
+    } catch {
+      return null
     }
-    setLoading(false)
-  }, [])
+  })
+  const loading = false
 
   const logout = () => {
     localStorage.removeItem("currentUser")

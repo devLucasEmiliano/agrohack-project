@@ -4,12 +4,10 @@ import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Menu, LogOut } from "lucide-react"
-import { useState } from "react"
 
 export function Header() {
   const { user, logout } = useAuth()
   const router = useRouter()
-  const [menuOpen, setMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()

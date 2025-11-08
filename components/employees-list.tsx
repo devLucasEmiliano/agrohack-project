@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,12 +13,10 @@ interface EmployeesListProps {
 }
 
 export default function EmployeesList({ onEdit, onAdd }: EmployeesListProps) {
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employees, setEmployees] = useState<Employee[]>(() => getEmployees())
   const [search, setSearch] = useState("")
 
-  useEffect(() => {
-    setEmployees(getEmployees())
-  }, [])
+  // Removed effect; employees loaded via lazy initializer
 
   const handleDelete = (id: string) => {
     if (confirm("Deseja deletar este funcionário?")) {

@@ -10,6 +10,34 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle } from "lucide-react"
 
+const loginEndpoint = process.env.NEXT_PUBLIC_LOGIN_ENV || process.env.LOGIN_ENV || ""
+
+const buildUserProfile = (userEmail: string) => {
+  const trimmedEmail = userEmail.trim()
+  const extractedName = trimmedEmail.split("@")[0] || "Usuário"
+
+  return {
+    id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+    name: extractedName,
+    email: trimmedEmail,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+const persistSession = (user: ReturnType<typeof buildUserProfile>) => {
+  localStorage.setItem("currentUser", JSON.stringify(user))
+
+  if (typeof document !== "undefined") {
+    const cookieValue = encodeURIComponent(
+      JSON.stringify({
+        email: user.email,
+        loggedInAt: user.createdAt,
+      }),
+    )
+    document.cookie = `currentUser=${cookieValue}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
@@ -17,26 +45,58 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const isFormValid = Boolean(email.trim() && password)
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
+
+    if (!loginEndpoint) {
+      setError("Endpoint de login não configurado.")
+      return
+    }
+
+    if (!isFormValid) {
+      setError("Informe email e senha.")
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Simulated login - replace with real authentication
-      const storedUsers = JSON.parse(localStorage.getItem("users") || "[]")
-      const user = storedUsers.find((u: any) => u.email === email && u.password === password)
+      const payload = {
+        email: email.trim(),
+        senha: password,
+      }
 
-      if (!user) {
-        setError("Email ou senha inválidos")
-        setLoading(false)
+      const response = await fetch(loginEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        throw new Error("Não foi possível processar o login.")
+      }
+
+      const data: { login?: string | boolean } = await response.json().catch(() => ({}))
+      const loginStatus = String(data?.login ?? "").toLowerCase()
+
+      if (loginStatus !== "true") {
+        setError("Email ou senha inválidos.")
         return
       }
 
-      localStorage.setItem("currentUser", JSON.stringify(user))
+      const authenticatedUser = buildUserProfile(email)
+      persistSession(authenticatedUser)
+
       router.push("/dashboard")
     } catch (err) {
-      setError("Erro ao fazer login")
+      setError(err instanceof Error ? err.message : "Erro ao fazer login.")
+    } finally {
       setLoading(false)
     }
   }
@@ -58,7 +118,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="flex items-center gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
@@ -95,7 +155,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !isFormValid}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {loading ? "Entrando..." : "Entrar"}

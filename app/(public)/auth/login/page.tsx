@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const loginEndpoint =
   process.env.NEXT_PUBLIC_LOGIN_ENV || process.env.LOGIN_ENV || "";
@@ -34,24 +35,10 @@ const buildUserProfile = (userEmail: string) => {
   };
 };
 
-const persistSession = (user: ReturnType<typeof buildUserProfile>) => {
-  localStorage.setItem("currentUser", JSON.stringify(user));
-
-  if (typeof document !== "undefined") {
-    const cookieValue = encodeURIComponent(
-      JSON.stringify({
-        email: user.email,
-        loggedInAt: user.createdAt,
-      })
-    );
-    document.cookie = `currentUser=${cookieValue}; path=/; max-age=${
-      60 * 60 * 24
-    }; SameSite=Lax`;
-  }
-};
-
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -105,9 +92,10 @@ export default function LoginPage() {
       }
 
       const authenticatedUser = buildUserProfile(email);
-      persistSession(authenticatedUser);
+      login(authenticatedUser);
 
-      router.push("/dashboard");
+      const redirectTo = searchParams.get("redirect") || "/dashboard";
+      router.replace(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao fazer login.");
     } finally {

@@ -5,9 +5,11 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Clock, FileText, LogIn, UserPlus } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LandingPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -94,6 +96,33 @@ export default function LandingPage() {
     };
   }, []);
 
+  const redirectTo = (target: string) =>
+    `/auth/login?redirect=${encodeURIComponent(target)}`;
+
+  const handleDashboardClick = () => {
+    if (user) {
+      router.push("/dashboard");
+    } else {
+      router.push(redirectTo("/dashboard"));
+    }
+  };
+
+  const handleRegisterClick = () => {
+    if (user) {
+      router.push("/dashboard/register");
+    } else {
+      router.push(redirectTo("/dashboard/register"));
+    }
+  };
+
+  const handleConsultClick = () => {
+    if (user) {
+      router.push("/dashboard/consult");
+    } else {
+      router.push("/consultHours");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Animated Background */}
@@ -116,11 +145,7 @@ export default function LandingPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/auth/login")}
-              >
+              <Button variant="ghost" size="sm" onClick={handleDashboardClick}>
                 <LogIn className="w-4 h-4 mr-2" />
                 Dashboard
               </Button>
@@ -149,7 +174,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               <Card
                 className="p-8 hover:shadow-2xl transition-all duration-300 cursor-pointer border-2 hover:border-primary group"
-                onClick={() => router.push("/registerHours")}
+                onClick={handleRegisterClick}
               >
                 <div className="space-y-4">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
@@ -169,7 +194,7 @@ export default function LandingPage() {
 
               <Card
                 className="p-8 hover:shadow-2xl transition-all duration-300 cursor-pointer border-2 hover:border-primary group"
-                onClick={() => router.push("/consultHours")}
+                onClick={handleConsultClick}
               >
                 <div className="space-y-4">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">

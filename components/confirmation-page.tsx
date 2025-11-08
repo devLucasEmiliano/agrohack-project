@@ -5,8 +5,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Check, Edit2, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Edit2, Loader2, AlertCircle } from "lucide-react";
 import { SERVICOS, RA_DATABASE } from "@/lib/operators-data";
+import { registerHours, saveLocalBackup } from "@/lib/api-service";
 import type { FormData } from "./chat-bot";
 
 export function ConfirmationPage({
@@ -22,6 +23,7 @@ export function ConfirmationPage({
   const [localData, setLocalData] = useState(data);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleEdit = (field: string) => {
     setEditingField(field);
@@ -37,21 +39,29 @@ export function ConfirmationPage({
 
   const handleSubmit = async () => {
     setLoading(true);
+    setError(null);
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const records = JSON.parse(
-        localStorage.getItem("workHoursRecords") || "[]"
-      );
-      records.push({
-        id: Date.now().toString(),
-        ...localData,
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem("workHoursRecords", JSON.stringify(records));
+      // Envia os dados para a API
+      const response = await registerHours(localData);
+
+      // Se chegou aqui, o registro foi bem-sucedido (RHT: true)
+      // Salva backup local
+      saveLocalBackup(localData, response.RHT);
+
       setSubmitted(true);
-      onSubmit();
-    } catch (error) {
-      console.error("Error submitting form:", error);
+
+      // Aguarda um pouco antes de redirecionar para o usuário ver a mensagem de sucesso
+      setTimeout(() => {
+        onSubmit();
+      }, 2000);
+    } catch (err) {
+      console.error("Erro ao enviar registro:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro desconhecido ao enviar registro"
+      );
     } finally {
       setLoading(false);
     }
@@ -322,6 +332,24 @@ export function ConfirmationPage({
             </div>
           </SectionCard>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <Card className="mt-4 p-4 bg-destructive/10 border-destructive">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-destructive mb-1">
+                  Erro ao enviar registro
+                </h3>
+                <p className="text-sm text-destructive/90">{error}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Verifique sua conexão com a internet e tente novamente.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Action Buttons - Mobile First */}
         <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end">

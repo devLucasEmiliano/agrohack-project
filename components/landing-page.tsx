@@ -149,7 +149,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               <Card
                 className="p-8 hover:shadow-2xl transition-all duration-300 cursor-pointer border-2 hover:border-primary group"
-                onClick={() => router.push("/register")}
+                onClick={() => router.push("/registerHours")}
               >
                 <div className="space-y-4">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
@@ -169,7 +169,7 @@ export default function LandingPage() {
 
               <Card
                 className="p-8 hover:shadow-2xl transition-all duration-300 cursor-pointer border-2 hover:border-primary group"
-                onClick={() => router.push("/consulta")}
+                onClick={() => router.push("/consultHours")}
               >
                 <div className="space-y-4">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">

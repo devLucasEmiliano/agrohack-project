@@ -1,8 +1,15 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Clock, FileText, BarChart3, Settings } from "lucide-react"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Clock,
+  FileText,
+  BarChart3,
+  Users,
+  ClipboardList,
+  Download,
+} from "lucide-react";
 
 const navigation = [
   {
@@ -16,19 +23,29 @@ const navigation = [
     icon: Clock,
   },
   {
-    name: "Histórico",
+    name: "Folha de Horas",
+    href: "/dashboard/timesheet",
+    icon: ClipboardList,
+  },
+  {
+    name: "Histórico de Registros",
     href: "/dashboard/history",
     icon: FileText,
   },
   {
-    name: "Configurações",
-    href: "/dashboard/settings",
-    icon: Settings,
+    name: "Gerenciar Funcionários",
+    href: "/dashboard/employees",
+    icon: Users,
   },
-]
+  {
+    name: "Relatórios",
+    href: "/dashboard/reports",
+    icon: Download,
+  },
+];
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <div className="hidden md:flex w-64 flex-col bg-card border-r border-border">
@@ -39,22 +56,24 @@ export function Sidebar() {
 
       <nav className="flex-1 p-4 space-y-2">
         {navigation.map((item) => {
-          const isActive = pathname === item.href
-          const Icon = item.icon
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
-                isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-secondary"
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground hover:bg-secondary"
               }`}
             >
               <Icon className="w-5 h-5" />
               <span className="font-medium">{item.name}</span>
             </Link>
-          )
+          );
         })}
       </nav>
     </div>
-  )
+  );
 }

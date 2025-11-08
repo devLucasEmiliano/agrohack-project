@@ -1,64 +1,66 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { ArrowLeft, Check, Edit2, Loader2 } from "lucide-react"
-import { SERVICOS, RA_DATABASE } from "@/lib/operators-data"
-import type { FormData } from "./chat-bot"
+import type React from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Check, Edit2, Loader2 } from "lucide-react";
+import { SERVICOS, RA_DATABASE } from "@/lib/operators-data";
+import type { FormData } from "./chat-bot";
 
 export function ConfirmationPage({
   data,
   onSubmit,
   onEdit,
 }: {
-  data: FormData
-  onSubmit: () => void
-  onEdit: () => void
+  data: FormData;
+  onSubmit: () => void;
+  onEdit: () => void;
 }) {
-  const [editingField, setEditingField] = useState<string | null>(null)
-  const [localData, setLocalData] = useState(data)
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [localData, setLocalData] = useState(data);
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleEdit = (field: string) => {
-    setEditingField(field)
-  }
+    setEditingField(field);
+  };
 
   const handleUpdate = (field: string, value: string) => {
     setLocalData((prev) => ({
       ...prev,
       [field]: value,
-    }))
-    setEditingField(null)
-  }
+    }));
+    setEditingField(null);
+  };
 
   const handleSubmit = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      const records = JSON.parse(localStorage.getItem("workRecords") || "[]")
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const records = JSON.parse(
+        localStorage.getItem("workHoursRecords") || "[]"
+      );
       records.push({
         id: Date.now().toString(),
         ...localData,
         createdAt: new Date().toISOString(),
-      })
-      localStorage.setItem("workRecords", JSON.stringify(records))
-      setSubmitted(true)
-      onSubmit()
+      });
+      localStorage.setItem("workHoursRecords", JSON.stringify(records));
+      setSubmitted(true);
+      onSubmit();
     } catch (error) {
-      console.error("Error submitting form:", error)
+      console.error("Error submitting form:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getRaFullName = () => {
-    const ra = RA_DATABASE.find((r) => r.numero === localData.raSignla)
-    return ra ? `${ra.numero} - ${ra.nome}` : localData.raSignla
-  }
+    const ra = RA_DATABASE.find((r) => r.numero === localData.raSignla);
+    return ra ? `${ra.numero} - ${ra.nome}` : localData.raSignla;
+  };
 
   if (submitted) {
     return (
@@ -69,12 +71,16 @@ export function ConfirmationPage({
               <Check className="w-8 h-8 sm:w-12 sm:h-12 text-accent-foreground" />
             </div>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Enviado com Sucesso!</h2>
-          <p className="text-sm sm:text-base text-muted-foreground mb-6">Seus dados foram registrados com sucesso.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+            Enviado com Sucesso!
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground mb-6">
+            Seus dados foram registrados com sucesso.
+          </p>
           <Button
             onClick={() => {
-              setSubmitted(false)
-              onEdit()
+              setSubmitted(false);
+              onEdit();
             }}
             className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-sm"
           >
@@ -82,15 +88,15 @@ export function ConfirmationPage({
           </Button>
         </Card>
       </div>
-    )
+    );
   }
 
   const selectedServices = Object.entries(localData.servicos || {})
     .filter(([, data]) => data.selected)
     .map(([id]) => {
-      const service = SERVICOS.find((s) => s.id === id)
-      return { label: service?.label, unidade: service?.unidade }
-    })
+      const service = SERVICOS.find((s) => s.id === id);
+      return { label: service?.label, unidade: service?.unidade };
+    });
 
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4">
@@ -105,8 +111,12 @@ export function ConfirmationPage({
             <ArrowLeft className="w-4 h-4" />
             Voltar para Edição
           </Button>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Confirmação de Dados</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Revise e confirme suas informações</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Confirmação de Dados
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
+            Revise e confirme suas informações
+          </p>
         </div>
 
         {/* Confirmation Form - Mobile First */}
@@ -180,13 +190,17 @@ export function ConfirmationPage({
               </label>
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <p className="text-xs text-accent-foreground font-medium">Início</p>
+                  <p className="text-xs text-accent-foreground font-medium">
+                    Início
+                  </p>
                   <p className="text-base sm:text-lg font-bold text-accent-foreground">
                     {localData.horaInicio || "--:--"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-accent-foreground font-medium">Fim</p>
+                  <p className="text-xs text-accent-foreground font-medium">
+                    Fim
+                  </p>
                   <p className="text-base sm:text-lg font-bold text-accent-foreground">
                     {localData.horaFim || "--:--"}
                   </p>
@@ -265,7 +279,9 @@ export function ConfirmationPage({
                 />
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-foreground mb-1">Unidade</p>
+                <p className="text-xs sm:text-sm font-medium text-foreground mb-1">
+                  Unidade
+                </p>
                 <div className="bg-secondary border border-border rounded-md px-2 sm:px-3 py-2 text-card-foreground font-semibold text-sm">
                   {localData.unidadeServico || "N/A"}
                 </div>
@@ -309,7 +325,11 @@ export function ConfirmationPage({
 
         {/* Action Buttons - Mobile First */}
         <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end">
-          <Button variant="outline" onClick={onEdit} className="order-2 sm:order-1 text-sm bg-transparent">
+          <Button
+            variant="outline"
+            onClick={onEdit}
+            className="order-2 sm:order-1 text-sm bg-transparent"
+          >
             Editar Novamente
           </Button>
           <Button
@@ -332,15 +352,15 @@ export function ConfirmationPage({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function SectionCard({
   title,
   children,
 }: {
-  title: string
-  children: React.ReactNode
+  title: string;
+  children: React.ReactNode;
 }) {
   return (
     <Card className="p-3 sm:p-4 shadow-md bg-card border-border">
@@ -349,7 +369,7 @@ function SectionCard({
       </h2>
       <div className="space-y-3">{children}</div>
     </Card>
-  )
+  );
 }
 
 function ConfirmationField({
@@ -361,20 +381,22 @@ function ConfirmationField({
   onUpdate,
   type = "text",
 }: {
-  label: string
-  value: string
-  field: string
-  editingField: string | null
-  onEdit: (field: string) => void
-  onUpdate: (field: string, value: string) => void
-  type?: string
+  label: string;
+  value: string;
+  field: string;
+  editingField: string | null;
+  onEdit: (field: string) => void;
+  onUpdate: (field: string, value: string) => void;
+  type?: string;
 }) {
-  const isEditing = editingField === field
+  const isEditing = editingField === field;
 
   return (
     <div className="flex items-end gap-2">
       <div className="flex-1">
-        <label className="text-xs sm:text-sm font-medium text-foreground block mb-1">{label}</label>
+        <label className="text-xs sm:text-sm font-medium text-foreground block mb-1">
+          {label}
+        </label>
         {isEditing ? (
           <Input
             type={type}
@@ -383,7 +405,7 @@ function ConfirmationField({
             onBlur={(e) => onUpdate(field, e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                onUpdate(field, e.currentTarget.value)
+                onUpdate(field, e.currentTarget.value);
               }
             }}
             className="w-full text-sm border-border"
@@ -405,7 +427,7 @@ function ConfirmationField({
         </Button>
       )}
     </div>
-  )
+  );
 }
 
-export default ConfirmationPage
+export default ConfirmationPage;

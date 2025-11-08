@@ -220,7 +220,7 @@ export default function SignupPage() {
                   className="flex items-center gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm"
                   role="alert"
                 >
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
@@ -230,7 +230,7 @@ export default function SignupPage() {
                   className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-emerald-600 text-sm mt-3"
                   role="status"
                 >
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{success}</span>
                 </div>
               )}

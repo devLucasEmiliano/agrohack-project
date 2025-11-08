@@ -421,7 +421,7 @@ function ConfirmationField({
           variant="ghost"
           size="sm"
           onClick={() => onEdit(field)}
-          className="text-accent hover:text-accent-foreground hover:bg-accent/10 flex-shrink-0"
+          className="text-accent hover:text-accent-foreground hover:bg-accent/10 shrink-0"
         >
           <Edit2 className="w-4 h-4" />
         </Button>

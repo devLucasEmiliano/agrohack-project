@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
   Clock,
   MapPin,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import {
   OPERATORS_DATABASE,
@@ -70,6 +71,46 @@ const STEPS = [
   },
   { title: "Conclusão", fields: ["observacoes"] },
 ];
+
+const STEP_REQUIREMENTS: Record[number, string[]] = {
+  0: ["operador", "matricula", "localServico", "raSignla", "comunidade"],
+  1: ["processo", "data", "horaInicio", "horaFim"],
+  2: ["maquina", "prefixoMaquina", "implementos", "prefixoImplementos"],
+  3: ["horimetroInicial", "horimetroFinal", "totalServico", "unidadeServico", "servicos"],
+};
+
+const FIELD_LABELS: Record[string, string] = {
+  operador: "Nome do operador",
+  matricula: "Matricula",
+  localServico: "Local do servico",
+  raSignla: "Sigla RA",
+  comunidade: "Comunidade",
+  processo: "Processo",
+  data: "Data",
+  horaInicio: "Hora inicial",
+  horaFim: "Hora final",
+  maquina: "Maquina",
+  prefixoMaquina: "Prefixo da maquina",
+  implementos: "Implementos",
+  prefixoImplementos: "Prefixo dos implementos",
+  horimetroInicial: "Horimetro inicial",
+  horimetroFinal: "Horimetro final",
+  totalServico: "Total do servico",
+  unidadeServico: "Unidade do servico",
+  servicos: "Servicos realizados",
+};
+
+const buildInitialFormState = (): Partial<FormData> => {
+  const now = new Date();
+  const plusOneHour = new Date(now.getTime() + 60 * 60 * 1000);
+  return {
+    servicos: {},
+    data: now.toISOString().split("T")[0],
+    horaInicio: now.toTimeString().slice(0, 5),
+    horaFim: plusOneHour.toTimeString().slice(0, 5),
+  };
+};
+
 
 function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
   const [currentStep, setCurrentStep] = useState(0);

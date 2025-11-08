@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,17 @@ import {
   type Employee,
   getEmployees,
   deleteEmployee,
+  saveEmployees,
 } from "@/lib/employees-data";
-import { Plus, Trash2, Edit2 } from "lucide-react";
+import { fetchEmployees, type EmployeeFromAPI } from "@/lib/api-service";
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 
 interface EmployeesListProps {
   onEdit: (employee: Employee) => void;
@@ -17,10 +26,69 @@ interface EmployeesListProps {
 }
 
 export default function EmployeesList({ onEdit, onAdd }: EmployeesListProps) {
-  const [employees, setEmployees] = useState<Employee[]>(() => getEmployees());
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Removed effect; employees loaded via lazy initializer
+  // Função para transformar funcionário da API para o formato local
+  const transformAPIEmployee = (apiEmployee: EmployeeFromAPI): Employee => {
+    // Transforma data de DD/MM/YYYY para YYYY-MM-DD
+    const [day, month, year] = apiEmployee.DATA_NASCIMENTO.split("/");
+    const dataNascimento = `${year}-${month}-${day}`;
+
+    return {
+      id: apiEmployee.id.toString(),
+      name: apiEmployee.NOME,
+      matricula: apiEmployee.MATRICULA,
+      dataNascimento,
+      createdAt: apiEmployee.createdAt,
+    };
+  };
+
+  // Função para carregar funcionários da API
+  const loadEmployees = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const apiEmployees = await fetchEmployees();
+      const transformedEmployees = apiEmployees.map(transformAPIEmployee);
+
+      // Atualiza estado
+      setEmployees(transformedEmployees);
+
+      // Sincroniza com localStorage
+      saveEmployees(transformedEmployees);
+
+      console.log(
+        `${transformedEmployees.length} funcionário(s) carregado(s) da API`
+      );
+    } catch (err) {
+      console.error("Erro ao carregar funcionários:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao carregar funcionários da API"
+      );
+
+      // Em caso de erro, tenta carregar do localStorage
+      const localEmployees = getEmployees();
+      if (localEmployees.length > 0) {
+        setEmployees(localEmployees);
+        console.log(
+          `${localEmployees.length} funcionário(s) carregado(s) do localStorage (fallback)`
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carrega funcionários ao montar o componente
+  useEffect(() => {
+    loadEmployees();
+  }, []);
 
   const handleDelete = (id: string) => {
     if (confirm("Deseja deletar este funcionário?")) {

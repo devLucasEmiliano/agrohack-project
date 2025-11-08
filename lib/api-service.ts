@@ -231,3 +231,62 @@ export async function registerEmployee(
     throw error;
   }
 }
+
+/**
+ * Funcionário retornado pela API
+ */
+export interface EmployeeFromAPI {
+  NOME: string;
+  MATRICULA: string;
+  DATA_NASCIMENTO: string;
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Obtém a lista de funcionários da API
+ *
+ * @returns Promise com array de funcionários
+ * @throws Error se a requisição falhar
+ */
+export async function fetchEmployees(): Promise<EmployeeFromAPI[]> {
+  const apiUrl = process.env.NEXT_PUBLIC_OBTER_FUNCIONARIO_ENV;
+
+  if (!apiUrl) {
+    throw new Error(
+      "URL da API não configurada. Verifique a variável NEXT_PUBLIC_OBTER_FUNCIONARIO_ENV"
+    );
+  }
+
+  console.log("Buscando funcionários da API:", apiUrl);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+    }
+
+    const data: EmployeeFromAPI[] = await response.json();
+
+    console.log(`${data.length} funcionário(s) obtido(s) da API`);
+
+    return data;
+  } catch (error) {
+    console.error("Erro ao buscar funcionários:", error);
+
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(
+        "Erro de conexão. Verifique sua internet e tente novamente."
+      );
+    }
+
+    throw error;
+  }
+}

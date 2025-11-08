@@ -13,18 +13,44 @@ interface WorkRecord extends FormData {
   createdAt: string;
 }
 
+const RECORD_STORAGE_KEYS = ["workHoursRecords", "workRecords"] as const;
+
+const loadStoredRecords = (): WorkRecord[] => {
+  if (typeof window === "undefined") return [];
+  for (const key of RECORD_STORAGE_KEYS) {
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as WorkRecord[];
+        if (key !== RECORD_STORAGE_KEYS[0]) {
+          localStorage.setItem(RECORD_STORAGE_KEYS[0], stored);
+        }
+        return parsed;
+      } catch {
+        return [];
+      }
+    }
+  }
+  return [];
+};
+
+const persistRecords = (records: WorkRecord[]) => {
+  if (typeof window === "undefined") return;
+  try {
+    const payload = JSON.stringify(records);
+    localStorage.setItem(RECORD_STORAGE_KEYS[0], payload);
+    localStorage.setItem(RECORD_STORAGE_KEYS[1], payload);
+  } catch {
+    // ignore serialization errors
+  }
+};
+
 export default function HistoryPage() {
   // Access user if needed later (kept to avoid future unused removal decisions)
   useAuth();
-  const [records, setRecords] = useState<WorkRecord[]>(() => {
-    try {
-      const stored = localStorage.getItem("workRecords");
-      if (!stored) return [];
-      return JSON.parse(stored);
-    } catch {
-      return [];
-    }
-  });
+  const [records, setRecords] = useState<WorkRecord[]>(() =>
+    loadStoredRecords()
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [selectedRecord, setSelectedRecord] = useState<WorkRecord | null>(null);
@@ -51,7 +77,7 @@ export default function HistoryPage() {
     if (confirm("Tem certeza que deseja deletar este registro?")) {
       const updated = records.filter((r) => r.id !== id);
       setRecords(updated);
-      localStorage.setItem("workRecords", JSON.stringify(updated));
+      persistRecords(updated);
     }
   };
 

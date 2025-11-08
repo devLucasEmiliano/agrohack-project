@@ -9,6 +9,7 @@ import {
   Users,
   ClipboardList,
   Download,
+  Search,
 } from "lucide-react";
 
 const navigation = [
@@ -26,6 +27,11 @@ const navigation = [
     name: "Folha de Horas",
     href: "/dashboard/timesheet",
     icon: ClipboardList,
+  },
+  {
+    name: "Consultar Folha",
+    href: "/dashboard/consult",
+    icon: Search,
   },
   {
     name: "Histórico de Registros",

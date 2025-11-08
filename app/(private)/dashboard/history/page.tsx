@@ -1,83 +1,77 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Eye, Download } from "lucide-react";
-import type { FormData } from "@/components/chat-bot";
-
-interface WorkRecord extends FormData {
-  id: string;
-  createdAt: string;
-}
-
-const RECORD_STORAGE_KEYS = ["workHoursRecords", "workRecords"] as const;
-
-const loadStoredRecords = (): WorkRecord[] => {
-  if (typeof window === "undefined") return [];
-  for (const key of RECORD_STORAGE_KEYS) {
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as WorkRecord[];
-        if (key !== RECORD_STORAGE_KEYS[0]) {
-          localStorage.setItem(RECORD_STORAGE_KEYS[0], stored);
-        }
-        return parsed;
-      } catch {
-        return [];
-      }
-    }
-  }
-  return [];
-};
-
-const persistRecords = (records: WorkRecord[]) => {
-  if (typeof window === "undefined") return;
-  try {
-    const payload = JSON.stringify(records);
-    localStorage.setItem(RECORD_STORAGE_KEYS[0], payload);
-    localStorage.setItem(RECORD_STORAGE_KEYS[1], payload);
-  } catch {
-    // ignore serialization errors
-  }
-};
+import { Trash2, Eye, Download, AlertCircle } from "lucide-react";
+import {
+  fetchGlobalHistory,
+  type EmployeeHoursRecord,
+} from "@/lib/api-service";
 
 export default function HistoryPage() {
-  // Access user if needed later (kept to avoid future unused removal decisions)
   useAuth();
-  const [records, setRecords] = useState<WorkRecord[]>(() =>
-    loadStoredRecords()
-  );
+  const [records, setRecords] = useState<EmployeeHoursRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
-  const [selectedRecord, setSelectedRecord] = useState<WorkRecord | null>(null);
-  // Loading considered true until first render completes (records already loaded lazily)
-  const loading = false;
+  const [selectedRecord, setSelectedRecord] =
+    useState<EmployeeHoursRecord | null>(null);
+
+  // Carrega registros da API ao montar
+  useEffect(() => {
+    let ignore = false;
+
+    const loadRecords = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchGlobalHistory();
+        if (ignore) return;
+        setRecords(data);
+      } catch (err) {
+        if (ignore) return;
+        console.error("Erro ao carregar histórico:", err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Não foi possível carregar o histórico."
+        );
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+
+    loadRecords();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const filteredRecords = useMemo(() => {
     let filtered = records;
     if (searchTerm) {
       filtered = filtered.filter(
         (r) =>
-          r.operador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          r.matricula?.includes(searchTerm) ||
-          r.localServico?.toLowerCase().includes(searchTerm.toLowerCase())
+          r.OPERADOR_NOME?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          r.OPERADOR_MATRICULA?.includes(searchTerm) ||
+          r.LOCAL_SERVICO?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (filterDate) {
-      filtered = filtered.filter((r) => r.data === filterDate);
+      filtered = filtered.filter((r) => r.DATA === filterDate);
     }
     return filtered;
   }, [records, searchTerm, filterDate]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (confirm("Tem certeza que deseja deletar este registro?")) {
       const updated = records.filter((r) => r.id !== id);
       setRecords(updated);
-      persistRecords(updated);
+      // TODO: Implementar exclusão via API quando disponível
     }
   };
 
@@ -93,28 +87,28 @@ export default function HistoryPage() {
       "Matrícula",
       "Local",
       "RA",
+      "Comunidade",
       "Máquina",
       "Horimetro Inicial",
       "Horimetro Final",
       "Total Serviço",
-      "Unidade",
       "Abastecimento",
       "Data de Criação",
     ];
 
     const rows = filteredRecords.map((r) => [
-      r.data,
-      r.operador,
-      r.matricula,
-      r.localServico,
-      r.raSignla,
-      r.maquina,
-      r.horimetroInicial,
-      r.horimetroFinal,
-      r.totalServico,
-      r.unidadeServico,
-      r.abastecimento,
-      new Date(r.createdAt).toLocaleDateString("pt-BR"),
+      r.DATA,
+      r.OPERADOR_NOME,
+      r.OPERADOR_MATRICULA,
+      r.LOCAL_SERVICO,
+      r.RA,
+      r.COMUNIDADE,
+      r.MAQUINA_PREFIXO,
+      r.HORIMETRO_INICIAL,
+      r.HORIMETRO_FINAL,
+      r.TOTAL_SERVICO,
+      r.ABASTECIMENTO,
+      r.createdAt ? new Date(r.createdAt).toLocaleDateString("pt-BR") : "-",
     ]);
 
     let csv = headers.join(",") + "\n";
@@ -137,6 +131,33 @@ export default function HistoryPage() {
         <div className="text-center py-12">
           <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto mb-2"></div>
           <p className="text-muted-foreground">Carregando registros...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 md:p-8">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-destructive/50">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-3 text-destructive">
+                <AlertCircle className="w-5 h-5 mt-0.5" />
+                <div>
+                  <p className="font-semibold mb-1">Erro ao carregar histórico</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-4"
+                variant="outline"
+              >
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -232,7 +253,7 @@ export default function HistoryPage() {
                       Operador
                     </p>
                     <p className="text-sm font-semibold text-foreground">
-                      {record.operador}
+                      {record.OPERADOR_NOME}
                     </p>
                   </div>
                   <div>
@@ -240,7 +261,7 @@ export default function HistoryPage() {
                       Matrícula
                     </p>
                     <p className="text-sm font-semibold text-foreground">
-                      {record.matricula}
+                      {record.OPERADOR_MATRICULA}
                     </p>
                   </div>
                   <div>
@@ -248,7 +269,7 @@ export default function HistoryPage() {
                       Local
                     </p>
                     <p className="text-sm font-semibold text-foreground">
-                      {record.localServico}
+                      {record.LOCAL_SERVICO}
                     </p>
                   </div>
                   <div>
@@ -256,7 +277,7 @@ export default function HistoryPage() {
                       Data
                     </p>
                     <p className="text-sm font-semibold text-foreground">
-                      {new Date(record.data).toLocaleDateString("pt-BR")}
+                      {new Date(record.DATA).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                 </div>
@@ -267,7 +288,7 @@ export default function HistoryPage() {
                       Máquina
                     </p>
                     <p className="text-sm text-foreground">
-                      {record.maquina || "-"}
+                      {record.MAQUINA_PREFIXO || "-"}
                     </p>
                   </div>
                   <div>
@@ -275,7 +296,7 @@ export default function HistoryPage() {
                       Horimetro
                     </p>
                     <p className="text-sm text-foreground">
-                      {record.horimetroInicial} → {record.horimetroFinal}
+                      {record.HORIMETRO_INICIAL} → {record.HORIMETRO_FINAL}
                     </p>
                   </div>
                   <div>
@@ -283,7 +304,7 @@ export default function HistoryPage() {
                       Total
                     </p>
                     <p className="text-sm font-semibold text-foreground">
-                      {record.totalServico} {record.unidadeServico}
+                      {record.TOTAL_SERVICO}
                     </p>
                   </div>
                   <div>
@@ -291,7 +312,7 @@ export default function HistoryPage() {
                       Abastecimento
                     </p>
                     <p className="text-sm text-foreground">
-                      {record.abastecimento || "-"} L
+                      {record.ABASTECIMENTO || "-"} L
                     </p>
                   </div>
                 </div>
@@ -306,14 +327,16 @@ export default function HistoryPage() {
                     <Eye className="w-4 h-4 mr-1" />
                     Ver Detalhes
                   </Button>
-                  <Button
-                    onClick={() => handleDelete(record.id)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 text-sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {record.id && (
+                    <Button
+                      onClick={() => handleDelete(record.id!)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 text-sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -343,7 +366,7 @@ export default function HistoryPage() {
                     Operador
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {selectedRecord.operador}
+                    {selectedRecord.OPERADOR_NOME}
                   </p>
                 </div>
                 <div>
@@ -351,7 +374,7 @@ export default function HistoryPage() {
                     Matrícula
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {selectedRecord.matricula}
+                    {selectedRecord.OPERADOR_MATRICULA}
                   </p>
                 </div>
                 <div>
@@ -359,7 +382,7 @@ export default function HistoryPage() {
                     Local do Serviço
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {selectedRecord.localServico}
+                    {selectedRecord.LOCAL_SERVICO}
                   </p>
                 </div>
                 <div>
@@ -367,7 +390,7 @@ export default function HistoryPage() {
                     RA
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {selectedRecord.raSignla}
+                    {selectedRecord.RA}
                   </p>
                 </div>
                 <div>
@@ -375,7 +398,7 @@ export default function HistoryPage() {
                     Data
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {new Date(selectedRecord.data).toLocaleDateString("pt-BR")}
+                    {new Date(selectedRecord.DATA).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
                 <div>
@@ -383,7 +406,8 @@ export default function HistoryPage() {
                     Horário
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {selectedRecord.horaInicio} - {selectedRecord.horaFim}
+                    {selectedRecord.HORA_INICIAL || "-"} -{" "}
+                    {selectedRecord.HORA_FINAL}
                   </p>
                 </div>
                 <div>
@@ -391,7 +415,7 @@ export default function HistoryPage() {
                     Máquina
                   </p>
                   <p className="text-sm text-foreground">
-                    {selectedRecord.maquina}
+                    {selectedRecord.MAQUINA_PREFIXO}
                   </p>
                 </div>
                 <div>
@@ -399,7 +423,7 @@ export default function HistoryPage() {
                     Implementos
                   </p>
                   <p className="text-sm text-foreground">
-                    {selectedRecord.implementos}
+                    {selectedRecord.IMPLEMENTO_PREFIXO}
                   </p>
                 </div>
                 <div>
@@ -407,7 +431,7 @@ export default function HistoryPage() {
                     Horimetro Inicial
                   </p>
                   <p className="text-sm text-foreground">
-                    {selectedRecord.horimetroInicial}
+                    {selectedRecord.HORIMETRO_INICIAL}
                   </p>
                 </div>
                 <div>
@@ -415,7 +439,7 @@ export default function HistoryPage() {
                     Horimetro Final
                   </p>
                   <p className="text-sm text-foreground">
-                    {selectedRecord.horimetroFinal}
+                    {selectedRecord.HORIMETRO_FINAL}
                   </p>
                 </div>
                 <div>
@@ -423,8 +447,7 @@ export default function HistoryPage() {
                     Total do Serviço
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {selectedRecord.totalServico}{" "}
-                    {selectedRecord.unidadeServico}
+                    {selectedRecord.TOTAL_SERVICO}
                   </p>
                 </div>
                 <div>
@@ -432,7 +455,7 @@ export default function HistoryPage() {
                     Abastecimento
                   </p>
                   <p className="text-sm text-foreground">
-                    {selectedRecord.abastecimento || "-"} L
+                    {selectedRecord.ABASTECIMENTO || "-"} L
                   </p>
                 </div>
               </div>
@@ -442,16 +465,18 @@ export default function HistoryPage() {
                   Observações
                 </p>
                 <p className="text-sm text-foreground whitespace-pre-wrap">
-                  {selectedRecord.observacoes || "-"}
+                  {selectedRecord.OBSERVACAO || "-"}
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground">
-                  Criado em:{" "}
-                  {new Date(selectedRecord.createdAt).toLocaleString("pt-BR")}
-                </p>
-              </div>
+              {selectedRecord.createdAt && (
+                <div className="pt-4 border-t border-border">
+                  <p className="text-xs text-muted-foreground">
+                    Criado em:{" "}
+                    {new Date(selectedRecord.createdAt).toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

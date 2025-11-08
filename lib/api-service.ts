@@ -471,3 +471,159 @@ export async function fetchEmployeeHours(
     throw error;
   }
 }
+
+// ============================================
+// BUSCAR HISTÓRICO GLOBAL
+// ============================================
+
+/**
+ * Busca o histórico global de todos os registros de horas via API
+ *
+ * @returns Promise com array de registros de horas
+ * @throws Error se a requisição falhar
+ */
+export async function fetchGlobalHistory(): Promise<EmployeeHoursRecord[]> {
+  const apiUrl = process.env.NEXT_PUBLIC_HISTORICO_GERAL_FUNCIONARIO_ENV;
+
+  if (!apiUrl) {
+    console.warn(
+      "URL da API de histórico global não configurada. Usando localStorage como fallback."
+    );
+    return fetchLocalHistory();
+  }
+
+  console.log("Buscando histórico global da API:", apiUrl);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+    }
+
+    // Verifica se há conteúdo na resposta
+    const text = await response.text();
+    if (!text || text.trim() === "") {
+      console.log("Resposta vazia da API - nenhum registro encontrado");
+      return [];
+    }
+
+    try {
+      const data: EmployeeHoursRecord[] = JSON.parse(text);
+      console.log(`${data.length} registro(s) de histórico encontrado(s)`);
+      return Array.isArray(data) ? data : [];
+    } catch (parseError) {
+      console.error("Erro ao parsear JSON:", parseError);
+      throw new Error("Resposta inválida da API. Tente novamente.");
+    }
+  } catch (error) {
+    console.error("Erro ao buscar histórico global:", error);
+
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(
+        "Erro de conexão. Verifique sua internet e tente novamente."
+      );
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Busca registros do localStorage como fallback
+ * @returns Promise com array de registros
+ */
+function fetchLocalHistory(): Promise<EmployeeHoursRecord[]> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve([]);
+      return;
+    }
+
+    const storageKeys = ["workHoursRecords", "workRecords"];
+
+    for (const key of storageKeys) {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            console.log(
+              `${parsed.length} registro(s) encontrado(s) no localStorage`
+            );
+            // Mapeia para o formato EmployeeHoursRecord
+            const mapped = parsed.map((record: Record<string, unknown>) => ({
+              OPERADOR_MATRICULA: String(
+                record.matricula || record.OPERADOR_MATRICULA || ""
+              ),
+              OPERADOR_NOME: String(
+                record.operador || record.OPERADOR_NOME || ""
+              ),
+              LOCAL_SERVICO: String(
+                record.localServico || record.LOCAL_SERVICO || ""
+              ),
+              RA: String(record.raSignla || record.RA || ""),
+              COMUNIDADE: String(record.comunidade || record.COMUNIDADE || ""),
+              PROCESSO: String(record.processo || record.PROCESSO || ""),
+              DATA: String(record.data || record.DATA || ""),
+              MAQUINA_PREFIXO: String(
+                record.prefixoMaquina || record.MAQUINA_PREFIXO || ""
+              ),
+              IMPLEMENTO_PREFIXO: String(
+                record.prefixoImplementos || record.IMPLEMENTO_PREFIXO || ""
+              ),
+              HORIMETRO_INICIAL: String(
+                record.horimetroInicial || record.HORIMETRO_INICIAL || ""
+              ),
+              HORIMETRO_FINAL: String(
+                record.horimetroFinal || record.HORIMETRO_FINAL || ""
+              ),
+              HORA_INICIAL: String(
+                record.horaInicio || record.HORA_INICIAL || ""
+              ),
+              HORA_FINAL: String(record.horaFim || record.HORA_FINAL || ""),
+              TOTAL_SERVICO: String(
+                record.totalServico || record.TOTAL_SERVICO || ""
+              ),
+              ABASTECIMENTO: String(
+                record.abastecimento || record.ABASTECIMENTO || ""
+              ),
+              OBSERVACAO: String(record.observacoes || record.OBSERVACAO || ""),
+              SEVICO_REALIZADO: String(
+                record.SEVICO_REALIZADO ||
+                  (record.servicos && typeof record.servicos === "object"
+                    ? Object.entries(
+                        record.servicos as Record<string, { selected: boolean }>
+                      )
+                        .filter(([, data]) => data.selected)
+                        .map(([id]) => id)
+                        .join(", ")
+                    : "")
+              ),
+              id: typeof record.id === "number" ? record.id : undefined,
+              createdAt:
+                typeof record.createdAt === "string"
+                  ? record.createdAt
+                  : undefined,
+              updatedAt:
+                typeof record.updatedAt === "string"
+                  ? record.updatedAt
+                  : undefined,
+            }));
+            resolve(mapped);
+            return;
+          }
+        } catch (parseError) {
+          console.error(`Erro ao parsear ${key} do localStorage:`, parseError);
+        }
+      }
+    }
+
+    resolve([]);
+  });
+}

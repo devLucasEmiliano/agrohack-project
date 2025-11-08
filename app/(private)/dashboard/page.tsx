@@ -18,7 +18,6 @@ import {
   Users,
   TrendingUp,
   Calendar,
-  ClipboardList,
   Download,
 } from "lucide-react";
 
@@ -172,25 +171,6 @@ export default function DashboardPage() {
               <Link href="/dashboard/register">
                 <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                   Iniciar Registro
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">Folha de Horas</CardTitle>
-                  <CardDescription>Por funcionário</CardDescription>
-                </div>
-                <ClipboardList className="w-8 h-8 text-primary opacity-20" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Link href="/dashboard/timesheet">
-                <Button variant="outline" className="w-full bg-transparent">
-                  Ver Folhas
                 </Button>
               </Link>
             </CardContent>

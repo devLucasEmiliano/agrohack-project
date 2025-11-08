@@ -12,7 +12,6 @@ import {
   ChevronRight,
   MessageCircle,
   Clock,
-  MapPin,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -49,11 +48,11 @@ const STEPS = [
   },
   {
     title: "Detalhes do Serviço",
-    fields: ["processo", "data", "horaInicio", "horaFim"],
+    fields: ["data", "horaInicio", "horaFim"], // Removido "processo"
   },
   {
     title: "Máquinas e Implementos",
-    fields: ["maquina", "prefixoMaquina", "implementos", "prefixoImplementos"],
+    fields: [], // Campos não obrigatórios
   },
   {
     title: "Horimetros e Serviços",
@@ -62,7 +61,6 @@ const STEPS = [
       "horimetroFinal",
       "totalServico",
       "unidadeServico",
-      "abastecimento",
       "servicos",
     ],
   },
@@ -71,8 +69,8 @@ const STEPS = [
 
 const STEP_REQUIREMENTS: Record<number, string[]> = {
   0: ["operador", "matricula", "localServico", "raSignla", "comunidade"],
-  1: ["processo", "data", "horaInicio", "horaFim"],
-  2: ["maquina", "prefixoMaquina", "implementos", "prefixoImplementos"],
+  1: ["data", "horaInicio", "horaFim"], // Removido "processo"
+  2: [], // Máquinas e implementos não obrigatórios
   3: [
     "horimetroInicial",
     "horimetroFinal",
@@ -86,18 +84,18 @@ const FIELD_LABELS: Record<string, string> = {
   operador: "Nome do operador",
   matricula: "Matricula",
   localServico: "Local do servico",
-  raSignla: "Sigla RA",
+  raSignla: "Região Administrativa",
   comunidade: "Comunidade",
-  processo: "Processo",
+  processo: "Processo SEI (opcional)",
   data: "Data",
   horaInicio: "Hora inicial",
   horaFim: "Hora final",
-  maquina: "Maquina",
+  maquina: "Nome da máquina",
   prefixoMaquina: "Prefixo da maquina",
-  implementos: "Implementos",
+  implementos: "Nome dos implementos",
   prefixoImplementos: "Prefixo dos implementos",
-  horimetroInicial: "Horimetro inicial",
-  horimetroFinal: "Horimetro final",
+  horimetroInicial: "Inicial",
+  horimetroFinal: "Final",
   totalServico: "Total do servico",
   unidadeServico: "Unidade do servico",
   servicos: "Servicos realizados",
@@ -116,7 +114,6 @@ const buildInitialFormState = (): Partial<FormData> => {
 
 function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [loadingGPS, setLoadingGPS] = useState(false);
   const [formData, setFormData] = useState<Partial<FormData>>(
     buildInitialFormState
   );
@@ -238,26 +235,6 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
       raSignla: ra.numero,
       comunidade: ra.nome,
     }));
-  };
-
-  const handleGetGPSLocation = () => {
-    setLoadingGPS(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          handleInputChange(
-            "localServico",
-            `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-          );
-          setLoadingGPS(false);
-        },
-        () => {
-          alert("Erro ao obter localização. Verifique as permissões.");
-          setLoadingGPS(false);
-        }
-      );
-    }
   };
 
   const handleServiceToggle = (serviceId: string, unidade: string) => {
@@ -404,42 +381,24 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
                 placeholder="Editar matrícula"
               />
 
-              <div>
-                <Label className="mb-2">Local do Serviço</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={formData.localServico || ""}
-                    onChange={(e) =>
-                      handleInputChange("localServico", e.target.value)
-                    }
-                    placeholder="Digite local ou use GPS"
-                    className="flex-1 text-sm"
-                  />
-                  <Button
-                    onClick={handleGetGPSLocation}
-                    disabled={loadingGPS}
-                    size="sm"
-                    variant="outline"
-                    className="px-3 bg-transparent"
-                  >
-                    {loadingGPS ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <MapPin className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
+              <FormField
+                label="Local do Serviço"
+                value={formData.localServico || ""}
+                onChange={(e) =>
+                  handleInputChange("localServico", e.target.value)
+                }
+                placeholder="Digite o local do serviço"
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="mb-2">Sigla RA</Label>
+                  <Label className="mb-2">Região Administrativa</Label>
                   <Input
                     value={formData.raSignla || ""}
                     onChange={(e) =>
                       handleInputChange("raSignla", e.target.value)
                     }
-                    placeholder="I, II, III..."
+                    placeholder="Nome da cidade ou número"
                     className="w-full text-sm"
                   />
                   {filteredRA.length > 0 && (
@@ -463,12 +422,12 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
                 </div>
 
                 <FormField
-                  label="Comunidade/Região"
+                  label="Comunidade"
                   value={formData.comunidade || ""}
                   onChange={(e) =>
                     handleInputChange("comunidade", e.target.value)
                   }
-                  placeholder="Nome da região"
+                  placeholder="Nome da comunidade"
                 />
               </div>
             </div>
@@ -477,10 +436,10 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
           {currentStep === 1 && (
             <div className="space-y-3 sm:space-y-4">
               <FormField
-                label="Processo SEI"
+                label="Processo SEI (opcional)"
                 value={formData.processo || ""}
                 onChange={(e) => handleInputChange("processo", e.target.value)}
-                placeholder="Número do processo"
+                placeholder="Número do processo (opcional)"
               />
               <FormField
                 label="Data"
@@ -519,12 +478,18 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
 
           {currentStep === 2 && (
             <div className="space-y-3 sm:space-y-4">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-700 dark:text-blue-400">
+                  ℹ️ Os campos desta seção são opcionais. Preencha apenas se
+                  aplicável.
+                </p>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <FormField
-                  label="Máquina"
+                  label="Nome da Máquina"
                   value={formData.maquina || ""}
                   onChange={(e) => handleInputChange("maquina", e.target.value)}
-                  placeholder="ID da máquina"
+                  placeholder="Nome (opcional)"
                 />
                 <FormField
                   label="Prefixo Máquina"
@@ -532,17 +497,17 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
                   onChange={(e) =>
                     handleInputChange("prefixoMaquina", e.target.value)
                   }
-                  placeholder="Prefixo"
+                  placeholder="Prefixo (opcional)"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <FormField
-                  label="Implementos"
+                  label="Nome dos Implementos"
                   value={formData.implementos || ""}
                   onChange={(e) =>
                     handleInputChange("implementos", e.target.value)
                   }
-                  placeholder="ID implementos"
+                  placeholder="Nome (opcional)"
                 />
                 <FormField
                   label="Prefixo Implementos"
@@ -550,7 +515,7 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
                   onChange={(e) =>
                     handleInputChange("prefixoImplementos", e.target.value)
                   }
-                  placeholder="Prefixo"
+                  placeholder="Prefixo (opcional)"
                 />
               </div>
             </div>
@@ -558,27 +523,32 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
 
           {currentStep === 3 && (
             <div className="space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <FormField
-                  label="Horimetro Inicial"
-                  value={formData.horimetroInicial || ""}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                    handleInputChange("horimetroInicial", val);
-                  }}
-                  placeholder="0934"
-                  maxLength={4}
-                />
-                <FormField
-                  label="Horimetro Final"
-                  value={formData.horimetroFinal || ""}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                    handleInputChange("horimetroFinal", val);
-                  }}
-                  placeholder="0940"
-                  maxLength={4}
-                />
+              <div className="border-l-4 border-accent bg-accent/10 p-4 rounded">
+                <label className="font-semibold text-accent-foreground text-sm block mb-3">
+                  Horímetro
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <FormField
+                    label="Inicial"
+                    value={formData.horimetroInicial || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      handleInputChange("horimetroInicial", val);
+                    }}
+                    placeholder="0934"
+                    maxLength={4}
+                  />
+                  <FormField
+                    label="Final"
+                    value={formData.horimetroFinal || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      handleInputChange("horimetroFinal", val);
+                    }}
+                    placeholder="0940"
+                    maxLength={4}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 sm:gap-3">

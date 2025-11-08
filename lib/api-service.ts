@@ -290,3 +290,174 @@ export async function fetchEmployees(): Promise<EmployeeFromAPI[]> {
     throw error;
   }
 }
+
+// ============================================
+// EXCLUIR FUNCIONÁRIO
+// ============================================
+
+/**
+ * Payload para exclusão de funcionário
+ */
+export interface DeleteEmployeePayload {
+  nomeCompleto: string;
+  matricula: string;
+  data_nascimento: string;
+}
+
+/**
+ * Resposta da API de exclusão de funcionário
+ */
+export interface DeleteEmployeeResponse {
+  delete: string; // "True" ou "False"
+}
+
+/**
+ * Exclui um funcionário via API
+ *
+ * @param employeeData - Dados do funcionário a ser excluído
+ * @returns Promise com a resposta da API
+ * @throws Error se a requisição falhar ou a exclusão não for bem-sucedida
+ */
+export async function deleteEmployee(
+  employeeData: DeleteEmployeePayload
+): Promise<DeleteEmployeeResponse> {
+  const apiUrl = process.env.NEXT_PUBLIC_EXCLUIR_FUNCIONARIO_ENV;
+
+  if (!apiUrl) {
+    throw new Error(
+      "URL da API não configurada. Verifique a variável NEXT_PUBLIC_EXCLUIR_FUNCIONARIO_ENV"
+    );
+  }
+
+  console.log("Enviando exclusão de funcionário para API:", {
+    url: apiUrl,
+    payload: employeeData,
+  });
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(employeeData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+    }
+
+    const data: DeleteEmployeeResponse = await response.json();
+
+    console.log("Resposta da API de exclusão:", data);
+
+    // Verifica se a exclusão foi bem-sucedida
+    if (data.delete !== "True") {
+      throw new Error("A API retornou falha na exclusão");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Erro ao excluir funcionário:", error);
+
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(
+        "Erro de conexão. Verifique sua internet e tente novamente."
+      );
+    }
+
+    throw error;
+  }
+}
+
+// ============================================
+// BUSCAR HORAS DO FUNCIONÁRIO
+// ============================================
+
+/**
+ * Payload para buscar horas do funcionário
+ */
+export interface FetchEmployeeHoursPayload {
+  nomeCompleto: string;
+  matricula: string;
+  data_nascimento: string;
+}
+
+/**
+ * Registro de horas do funcionário retornado pela API
+ */
+export interface EmployeeHoursRecord {
+  OPERADOR_MATRICULA: string;
+  OPERADOR_NOME: string;
+  LOCAL_SERVICO: string;
+  RA: string;
+  COMUNIDADE: string;
+  PROCESSO: string;
+  DATA: string;
+  MAQUINA_PREFIXO: string;
+  IMPLEMENTO_PREFIXO: string;
+  HORIMETRO_INICIAL: string;
+  HORIMETRO_FINAL: string;
+  HORA_FINAL: string;
+  TOTAL_SERVICO: string;
+  ABASTECIMENTO: string;
+  OBSERVACAO: string;
+  SEVICO_REALIZADO: string;
+  id?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Busca os registros de horas de um funcionário via API
+ *
+ * @param employeeData - Dados do funcionário (nome, matrícula, data de nascimento)
+ * @returns Promise com array de registros de horas
+ * @throws Error se a requisição falhar
+ */
+export async function fetchEmployeeHours(
+  employeeData: FetchEmployeeHoursPayload
+): Promise<EmployeeHoursRecord[]> {
+  const apiUrl = process.env.NEXT_PUBLIC_BUSCAR_HOURS_FUNCIONARIO_ENV;
+
+  if (!apiUrl) {
+    throw new Error(
+      "URL da API não configurada. Verifique a variável NEXT_PUBLIC_BUSCAR_HOURS_FUNCIONARIO_ENV"
+    );
+  }
+
+  console.log("Buscando horas do funcionário:", {
+    url: apiUrl,
+    payload: employeeData,
+  });
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(employeeData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
+    }
+
+    const data: EmployeeHoursRecord[] = await response.json();
+
+    console.log(`${data.length} registro(s) de horas encontrado(s)`);
+
+    return data;
+  } catch (error) {
+    console.error("Erro ao buscar horas do funcionário:", error);
+
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(
+        "Erro de conexão. Verifique sua internet e tente novamente."
+      );
+    }
+
+    throw error;
+  }
+}

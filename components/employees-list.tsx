@@ -7,10 +7,14 @@ import { Input } from "@/components/ui/input";
 import {
   type Employee,
   getEmployees,
-  deleteEmployee,
+  deleteEmployee as deleteEmployeeLocal,
   saveEmployees,
 } from "@/lib/employees-data";
-import { fetchEmployees, type EmployeeFromAPI } from "@/lib/api-service";
+import {
+  fetchEmployees,
+  deleteEmployee as deleteEmployeeAPI,
+  type EmployeeFromAPI,
+} from "@/lib/api-service";
 import {
   Plus,
   Trash2,
@@ -102,10 +106,40 @@ export default function EmployeesList({
     }
   }, [refreshTrigger, loadEmployees]);
 
-  const handleDelete = (id: string) => {
-    if (confirm("Deseja deletar este funcionário?")) {
-      deleteEmployee(id);
-      setEmployees(getEmployees());
+  const handleDelete = async (employee: Employee) => {
+    if (!confirm(`Deseja realmente excluir ${employee.name}?`)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Transforma data de YYYY-MM-DD para DD/MM/YYYY
+      const [year, month, day] = employee.dataNascimento.split("-");
+      const dataNascimento = `${day}/${month}/${year}`;
+
+      // Envia para API
+      await deleteEmployeeAPI({
+        nomeCompleto: employee.name,
+        matricula: employee.matricula,
+        data_nascimento: dataNascimento,
+      });
+
+      // Remove do localStorage
+      deleteEmployeeLocal(employee.id);
+
+      // Recarrega a lista
+      await loadEmployees();
+
+      console.log(`Funcionário ${employee.name} excluído com sucesso`);
+    } catch (err) {
+      console.error("Erro ao excluir funcionário:", err);
+      setError(
+        err instanceof Error ? err.message : "Erro ao excluir funcionário"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -223,7 +257,7 @@ export default function EmployeesList({
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDelete(employee.id)}
+                    onClick={() => handleDelete(employee)}
                     className="gap-2"
                     title="Excluir funcionário"
                   >

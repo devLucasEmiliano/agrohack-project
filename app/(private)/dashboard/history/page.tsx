@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, Eye, Download } from "lucide-react";
 import type { FormData } from "@/components/chat-bot";
+import {
+  fetchGlobalHistory,
+  type EmployeeHoursRecord,
+} from "@/lib/api-service";
 
 interface WorkRecord extends FormData {
   id: string;
@@ -48,6 +52,11 @@ const persistRecords = (records: WorkRecord[]) => {
 export default function HistoryPage() {
   // Access user if needed later (kept to avoid future unused removal decisions)
   useAuth();
+  const [remoteRecords, setRemoteRecords] = useState<EmployeeHoursRecord[]>([]);
+  const [remoteStatus, setRemoteStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [remoteError, setRemoteError] = useState("");
   const [records, setRecords] = useState<WorkRecord[]>(() =>
     loadStoredRecords()
   );
@@ -56,6 +65,42 @@ export default function HistoryPage() {
   const [selectedRecord, setSelectedRecord] = useState<WorkRecord | null>(null);
   // Loading considered true until first render completes (records already loaded lazily)
   const loading = false;
+
+  useEffect(() => {
+    let ignore = false;
+    const loadRemote = async () => {
+      setRemoteStatus("loading");
+      setRemoteError("");
+      try {
+        const data = await fetchGlobalHistory();
+        if (ignore) return;
+        const ordered = data
+          .filter(
+            (record) =>
+              record &&
+              (record.OPERADOR_MATRICULA ||
+                record.OPERADOR_NOME ||
+                record.id)
+          )
+          .sort((a, b) => getRecordTimestamp(b) - getRecordTimestamp(a));
+        setRemoteRecords(ordered);
+        setRemoteStatus("success");
+      } catch (error) {
+        if (ignore) return;
+        setRemoteStatus("error");
+        setRemoteError(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar o histórico geral."
+        );
+      }
+    };
+
+    loadRemote();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const filteredRecords = useMemo(() => {
     let filtered = records;

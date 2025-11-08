@@ -2,44 +2,43 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth-context";
-import { getEmployees, type Employee } from "@/lib/employees-data";
 import {
-  getTimesheetByEmployee,
-  type TimesheetEntry,
-} from "@/lib/timesheet-data";
+  fetchEmployeeHours,
+  fetchEmployees,
+  type EmployeeHoursRecord,
+  type EmployeeFromAPI,
+} from "@/lib/api-service";
 import {
   AlertCircle,
-  CalendarDays,
   CheckCircle2,
   Clock,
+  FileText,
+  History,
   Loader2,
   MapPin,
   Search,
   User2,
 } from "lucide-react";
 
-type FieldName = "nome" | "matricula" | "dataNascimento";
+type FieldName = "nome" | "matricula";
 type ConsultMode = "public" | "dashboard";
 
-const fieldOrder: FieldName[] = ["nome", "matricula", "dataNascimento"];
+const fieldOrder: FieldName[] = ["nome", "matricula"];
 
 const initialFormState: Record<FieldName, string> = {
   nome: "",
   matricula: "",
-  dataNascimento: "",
 };
 
 const initialErrors: Record<FieldName, string> = {
   nome: "",
   matricula: "",
-  dataNascimento: "",
 };
 
 interface ConsultFlowProps {
@@ -48,20 +47,59 @@ interface ConsultFlowProps {
 
 export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
   const router = useRouter();
-  const { user } = useAuth();
   const [formData, setFormData] =
     useState<Record<FieldName, string>>(initialFormState);
   const [visibleField, setVisibleField] = useState(0);
   const [errors, setErrors] =
     useState<Record<FieldName, string>>(initialErrors);
-  const [status, setStatus] = useState<"idle" | "searching" | "success" | "error">(
-    "idle"
-  );
+  const [status, setStatus] = useState<
+    "idle" | "searching" | "success" | "error"
+  >("idle");
   const [serverMessage, setServerMessage] = useState("");
-  const [result, setResult] = useState<{
-    employee: Employee;
-    entries: TimesheetEntry[];
-  } | null>(null);
+  const [records, setRecords] = useState<EmployeeHoursRecord[]>([]);
+
+  // Estado para funcionários (apenas no dashboard)
+  const [employees, setEmployees] = useState<EmployeeFromAPI[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+  // Carrega funcionários apenas no dashboard
+  useEffect(() => {
+    if (variant !== "dashboard") return;
+
+    const loadEmployees = async () => {
+      setLoadingEmployees(true);
+      try {
+        const data = await fetchEmployees();
+        setEmployees(data);
+      } catch (error) {
+        console.error("Erro ao carregar funcionários:", error);
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+
+    loadEmployees();
+  }, [variant]);
+
+  // Filtra funcionários para autocomplete
+  const filteredEmployees = useMemo(() => {
+    if (variant !== "dashboard" || !formData.nome) return [];
+    const query = formData.nome.toLowerCase();
+    return employees.filter(
+      (emp) =>
+        emp.NOME.toLowerCase().includes(query) ||
+        emp.MATRICULA.includes(query)
+    );
+  }, [formData.nome, employees, variant]);
+
+  const handleSelectEmployee = (employee: EmployeeFromAPI) => {
+    setFormData((prev) => ({
+      ...prev,
+      nome: employee.NOME,
+      matricula: employee.MATRICULA,
+    }));
+    setVisibleField(1); // Move para o próximo campo
+  };
 
   const isFieldVisible = (field: FieldName) =>
     fieldOrder.indexOf(field) <= visibleField;
@@ -71,7 +109,7 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
     setErrors((prev) => ({ ...prev, [field]: "" }));
     setStatus("idle");
     setServerMessage("");
-    setResult(null);
+    setRecords([]);
 
     const fieldIndex = fieldOrder.indexOf(field);
     if (value.trim().length > 1) {
@@ -87,7 +125,7 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
     setVisibleField(0);
     setStatus("idle");
     setServerMessage("");
-    setResult(null);
+    setRecords([]);
   };
 
   const validate = () => {
@@ -97,67 +135,57 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
       nextErrors.nome = "Informe o nome completo.";
     }
     if (!formData.matricula.trim()) {
-      nextErrors.matricula = "Informe a matricula.";
-    }
-    if (!formData.dataNascimento.trim()) {
-      nextErrors.dataNascimento = "Selecione a data de nascimento.";
+      nextErrors.matricula = "Informe a matrícula.";
     }
 
     setErrors(nextErrors);
     return Object.values(nextErrors).every((msg) => !msg);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!validate()) return;
 
     setStatus("searching");
     setServerMessage("");
-    setResult(null);
+    setRecords([]);
 
-    setTimeout(() => {
-      if (variant === "public" && !user) {
+    try {
+      const payload = {
+        OPERADOR_NOME: formData.nome.trim(),
+        OPERADOR_MATRICULA: formData.matricula.trim(),
+      };
+
+      const hoursRecords = await fetchEmployeeHours(payload);
+
+      if (hoursRecords.length === 0) {
         setStatus("error");
-        setServerMessage("Funcionario nao encontrado. Tente novamente.");
+        setServerMessage("Funcionário não encontrado. Tente novamente.");
         return;
       }
 
-      const employees = getEmployees();
-      const normalizedName = formData.nome.trim().toLowerCase();
-      const match = employees.find(
-        (emp) =>
-          emp.name.trim().toLowerCase() === normalizedName &&
-          emp.matricula.trim() === formData.matricula.trim() &&
-          emp.dataNascimento === formData.dataNascimento
-      );
+      const sorted = [...hoursRecords].sort((a, b) => {
+        return (
+          getRecordTimestamp(b) -
+          getRecordTimestamp(a)
+        );
+      });
 
-      if (!match) {
-        setStatus("error");
-        setServerMessage("Funcionario nao encontrado. Tente novamente.");
-        return;
-      }
-
-      const entries = getTimesheetByEmployee(match.id);
-      if (entries.length === 0) {
-        setStatus("error");
-        setServerMessage("Nenhum registro encontrado para esta combinacao.");
-        return;
-      }
-
+      setRecords(sorted);
       setStatus("success");
-      setResult({ employee: match, entries });
-    }, 350);
+    } catch (error) {
+      console.error(error);
+      setStatus("error");
+      setServerMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível consultar no momento."
+      );
+    }
   };
 
-  const recentEntries =
-    result?.entries.slice(-3).reverse() ?? ([] as TimesheetEntry[]);
-  const totalHours = result
-    ? result.entries.reduce((sum, entry) => sum + entry.hoursWorked, 0)
-    : 0;
-  const lastEntry =
-    result && result.entries.length > 0
-      ? result.entries[result.entries.length - 1]
-      : null;
+  const latestRecord = records[0];
+  const previousRecords = records.slice(1);
 
   const loginRedirect = () =>
     router.push("/auth/login?redirect=/dashboard/consult");
@@ -189,7 +217,7 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
                 Consultar folha de horas
               </h1>
               <p className="text-sm text-muted-foreground">
-                Informe seus dados para validar a folha cadastrada no dashboard
+                Informe seus dados para validar a folha cadastrada
               </p>
             </div>
 
@@ -209,7 +237,7 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
 
             <AnimatedField isVisible={isFieldVisible("matricula")}>
               <label className="text-sm font-medium text-foreground">
-                Matricula
+                Matrícula
               </label>
               <Input
                 value={formData.matricula}
@@ -218,22 +246,6 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
               />
               {errors.matricula && (
                 <p className="text-xs text-destructive">{errors.matricula}</p>
-              )}
-            </AnimatedField>
-
-            <AnimatedField isVisible={isFieldVisible("dataNascimento")}>
-              <label className="text-sm font-medium text-foreground">
-                Data de nascimento
-              </label>
-              <Input
-                type="date"
-                value={formData.dataNascimento}
-                onChange={(e) => handleChange("dataNascimento", e.target.value)}
-              />
-              {errors.dataNascimento && (
-                <p className="text-xs text-destructive">
-                  {errors.dataNascimento}
-                </p>
               )}
             </AnimatedField>
 
@@ -274,77 +286,159 @@ export function ConsultFlow({ variant = "public" }: ConsultFlowProps) {
             </div>
           )}
 
-          {status === "success" && result && (
-            <div className="space-y-4 rounded-lg border border-border/80 bg-background/70 p-5">
+          {status === "success" && latestRecord && (
+            <div className="space-y-5 rounded-lg border border-border/80 bg-background/70 p-5">
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
                 <CheckCircle2 className="w-4 h-4" />
-                Registros encontrados
+                {records.length === 1
+                  ? "1 registro encontrado"
+                  : `${records.length} registros encontrados`}
               </div>
+
               <div className="flex flex-wrap gap-4 text-sm">
                 <InfoChip
                   icon={<User2 className="w-4 h-4" />}
-                  label="Funcionario"
-                  value={result.employee.name}
+                  label="Operador"
+                  value={latestRecord.OPERADOR_NOME}
                 />
                 <InfoChip
                   icon={<MapPin className="w-4 h-4" />}
-                  label="Matricula"
-                  value={result.employee.matricula}
+                  label="Matrícula"
+                  value={latestRecord.OPERADOR_MATRICULA}
                 />
                 <InfoChip
-                  icon={<CalendarDays className="w-4 h-4" />}
-                  label="Cadastro"
-                  value={new Date(
-                    result.employee.createdAt
-                  ).toLocaleDateString("pt-BR")}
+                  icon={<FileText className="w-4 h-4" />}
+                  label="Local"
+                  value={latestRecord.LOCAL_SERVICO || "-"}
                 />
                 <InfoChip
                   icon={<Clock className="w-4 h-4" />}
-                  label="Total de horas"
-                  value={`${totalHours.toFixed(1)}h`}
+                  label="Registrado em"
+                  value={formatDate(latestRecord.createdAt || latestRecord.DATA)}
                 />
               </div>
 
-              {lastEntry && (
-                <div className="rounded-md border border-border px-4 py-3 text-sm">
-                  <p className="text-xs uppercase text-muted-foreground mb-1">
-                    Ultimo registro
+              <div className="grid gap-4 md:grid-cols-2">
+                <RecordSection title="Período e Processos">
+                  <KeyValueRow
+                    label="Data"
+                    value={formatDate(latestRecord.DATA)}
+                  />
+                  <KeyValueRow
+                    label="Horário"
+                    value={formatHourRange(
+                      latestRecord.HORA_INICIAL,
+                      latestRecord.HORA_FINAL
+                    )}
+                  />
+                  <KeyValueRow
+                    label="Processo"
+                    value={latestRecord.PROCESSO || "-"}
+                  />
+                  <KeyValueRow
+                    label="RA / Comunidade"
+                    value={`${latestRecord.RA || "-"} ${
+                      latestRecord.COMUNIDADE
+                        ? `- ${latestRecord.COMUNIDADE}`
+                        : ""
+                    }`.trim()}
+                  />
+                </RecordSection>
+
+                <RecordSection title="Horímetros e Serviços">
+                  <KeyValueRow
+                    label="Horímetro inicial"
+                    value={latestRecord.HORIMETRO_INICIAL || "-"}
+                  />
+                  <KeyValueRow
+                    label="Horímetro final"
+                    value={latestRecord.HORIMETRO_FINAL || "-"}
+                  />
+                  <KeyValueRow
+                    label="Total do serviço"
+                    value={latestRecord.TOTAL_SERVICO || "-"}
+                  />
+                  <KeyValueRow
+                    label="Abastecimento"
+                    value={
+                      latestRecord.ABASTECIMENTO
+                        ? `${latestRecord.ABASTECIMENTO} L`
+                        : "-"
+                    }
+                  />
+                </RecordSection>
+              </div>
+
+              <RecordSection title="Serviços realizados">
+                <div className="flex flex-wrap gap-2">
+                  {parseServices(latestRecord.SEVICO_REALIZADO).length === 0 ? (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  ) : (
+                    parseServices(latestRecord.SEVICO_REALIZADO).map(
+                      (service) => (
+                        <span
+                          key={service}
+                          className="text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full"
+                        >
+                          {service}
+                        </span>
+                      )
+                    )
+                  )}
+                </div>
+              </RecordSection>
+
+              <RecordSection title="Observações">
+                <p className="text-sm text-foreground whitespace-pre-wrap">
+                  {latestRecord.OBSERVACAO?.trim() || "Sem observações"}
+                </p>
+              </RecordSection>
+
+              {previousRecords.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs uppercase text-muted-foreground">
+                    Registros anteriores
                   </p>
-                  <div className="flex flex-wrap gap-4">
-                    <span>
-                      {new Date(lastEntry.date).toLocaleDateString("pt-BR")}
-                    </span>
-                    <span>
-                      {lastEntry.startTime} - {lastEntry.endTime}
-                    </span>
-                    <span>{lastEntry.activity}</span>
+                  <div className="space-y-2">
+                    {previousRecords.map((record) => (
+                      <div
+                        key={`${record.id ?? record.createdAt}-${record.DATA}`}
+                        className="rounded-md border border-border/70 px-4 py-3 text-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-foreground">
+                              {formatDate(record.DATA)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatHourRange(
+                                record.HORA_INICIAL,
+                                record.HORA_FINAL
+                              )}
+                            </p>
+                          </div>
+                          <div className="text-right text-xs text-muted-foreground">
+                            {record.LOCAL_SERVICO || "-"}
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground flex flex-wrap gap-2">
+                          {parseServices(record.SEVICO_REALIZADO).map(
+                            (service) => (
+                              <span
+                                key={`${record.id}-${service}`}
+                                className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5"
+                              >
+                                <History className="w-3 h-3" />
+                                {service}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
-
-              <div className="space-y-2">
-                <p className="text-xs uppercase text-muted-foreground">
-                  Ultimos registros
-                </p>
-                <div className="space-y-2">
-                  {recentEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="rounded-md border border-border/70 px-4 py-2 text-sm flex flex-wrap gap-3 justify-between"
-                    >
-                      <span className="font-medium text-foreground">
-                        {entry.activity}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {new Date(entry.date).toLocaleDateString("pt-BR")}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {entry.hoursWorked.toFixed(1)}h
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
@@ -405,9 +499,65 @@ function InfoChip({
     <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5">
       <span className="text-muted-foreground">{icon}</span>
       <div className="text-xs uppercase text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold text-foreground">{value}</div>
+      <div className="text-sm font-semibold text-foreground">
+        {value || "-"}
+      </div>
     </div>
   );
+}
+
+function RecordSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-md border border-border px-4 py-3 space-y-2 bg-card/70">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <div className="space-y-1.5">{children}</div>
+    </div>
+  );
+}
+
+function KeyValueRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground text-right">
+        {value || "-"}
+      </span>
+    </div>
+  );
+}
+
+function parseServices(raw: string) {
+  if (!raw) return [];
+  return raw
+    .split(/[,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("pt-BR");
+}
+
+function formatHourRange(start?: string, end?: string) {
+  if (start && end) return `${start} - ${end}`;
+  if (end) return end;
+  if (start) return start;
+  return "-";
+}
+
+function getRecordTimestamp(record: EmployeeHoursRecord) {
+  const target = record.createdAt || record.updatedAt || record.DATA;
+  const parsed = target ? new Date(target).getTime() : 0;
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 export default ConsultFlow;

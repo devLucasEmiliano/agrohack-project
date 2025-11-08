@@ -43,9 +43,14 @@ export default function HistoryPage() {
             <p className="text-muted-foreground mb-4">
               Nenhum registro encontrado
             </p>
-            <Button onClick={() => router.push("/register")}>
-              Fazer Primeiro Registro
-            </Button>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={() => router.push("/registerHours")}>
+                Fazer Primeiro Registro
+              </Button>
+              <Button variant="outline" onClick={() => router.push("/")}>
+                Voltar para Home
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">{/* Registros aqui */}</div>

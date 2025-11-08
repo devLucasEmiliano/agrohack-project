@@ -17,16 +17,8 @@ export default function RegisterPage() {
   };
 
   const handleConfirmationSubmit = () => {
-    const records = JSON.parse(
-      localStorage.getItem("workHoursRecords") || "[]"
-    );
-    records.push({
-      ...formData,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem("workHoursRecords", JSON.stringify(records));
-    router.push("/dashboard");
+    // Redireciona para a home após sucesso
+    router.push("/");
   };
 
   return (

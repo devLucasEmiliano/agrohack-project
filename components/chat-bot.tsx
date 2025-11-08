@@ -72,14 +72,14 @@ const STEPS = [
   { title: "Conclusão", fields: ["observacoes"] },
 ];
 
-const STEP_REQUIREMENTS: Record[number, string[]] = {
+const STEP_REQUIREMENTS: Record<number, string[]> = {
   0: ["operador", "matricula", "localServico", "raSignla", "comunidade"],
   1: ["processo", "data", "horaInicio", "horaFim"],
   2: ["maquina", "prefixoMaquina", "implementos", "prefixoImplementos"],
   3: ["horimetroInicial", "horimetroFinal", "totalServico", "unidadeServico", "servicos"],
 };
 
-const FIELD_LABELS: Record[string, string] = {
+const FIELD_LABELS: Record<string, string> = {
   operador: "Nome do operador",
   matricula: "Matricula",
   localServico: "Local do servico",
@@ -115,11 +115,10 @@ const buildInitialFormState = (): Partial<FormData> => {
 function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [loadingGPS, setLoadingGPS] = useState(false);
-  const [formData, setFormData] = useState<Partial<FormData>>({
-    servicos: {},
-    data: new Date().toISOString().split("T")[0],
-    horaInicio: new Date().toTimeString().slice(0, 5),
-  });
+  const [formData, setFormData] =
+    useState<Partial<FormData>>(buildInitialFormState);
+  const [stepAttempted, setStepAttempted] = useState(false);
+  const [userEditedTotal, setUserEditedTotal] = useState(false);
 
   const filteredOperators = useMemo(() => {
     if (!formData.operador) return [];
@@ -140,7 +139,61 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
     );
   }, [formData.raSignla]);
 
+  const hasSelectedService = useMemo(
+    () =>
+      Object.values(formData.servicos || {}).some(
+        (service) => service?.selected
+      ),
+    [formData.servicos]
+  );
+
+  const isFieldFilled = (field: string) => {
+    if (field === "servicos") {
+      return hasSelectedService;
+    }
+    const value = (formData as Record<string, unknown>)[field];
+    if (typeof value === "string") {
+      return value.trim().length > 0;
+    }
+    return Boolean(value);
+  };
+
+  const missingFields = useMemo(() => {
+    const required = STEP_REQUIREMENTS[currentStep] || [];
+    return required.filter((field) => !isFieldFilled(field));
+  }, [currentStep, formData, hasSelectedService]);
+
+  const canProceed = missingFields.length === 0;
+
+  useEffect(() => {
+    if (stepAttempted && missingFields.length === 0) {
+      setStepAttempted(false);
+    }
+  }, [missingFields.length, stepAttempted]);
+
+  useEffect(() => {
+    if (userEditedTotal) return;
+    const start = parseFloat(formData.horimetroInicial || "");
+    const end = parseFloat(formData.horimetroFinal || "");
+    if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+      return;
+    }
+    const diff = (end - start).toFixed(1);
+    setFormData((prev) => {
+      if (prev.totalServico === diff) {
+        return prev;
+      }
+      return {
+        ...prev,
+        totalServico: diff,
+      };
+    });
+  }, [formData.horimetroInicial, formData.horimetroFinal, userEditedTotal]);
+
   const handleInputChange = (field: string, value: string) => {
+    if (field === "totalServico") {
+      setUserEditedTotal(Boolean(value.trim()));
+    }
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -185,21 +238,33 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
   }, []);
 
   const handleServiceToggle = (serviceId: string, unidade: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      servicos: {
-        ...(prev.servicos || {}),
-        [serviceId]: {
-          selected: !(prev.servicos?.[serviceId]?.selected || false),
-          unidade,
-        },
-      },
-    }));
+    setFormData((prev) => {
+      const current = { ...(prev.servicos || {}) };
+      if (current[serviceId]?.selected) {
+        delete current[serviceId];
+      } else {
+        current[serviceId] = { selected: true, unidade };
+      }
+      const next: Partial<FormData> = {
+        ...prev,
+        servicos: current,
+      };
+      if (!prev.unidadeServico && current[serviceId]?.selected) {
+        next.unidadeServico = unidade;
+      }
+      return next;
+    });
   };
 
   const handleNext = () => {
+    if (!canProceed) {
+      setStepAttempted(true);
+      return;
+    }
+
     if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
+      setCurrentStep((prev) => prev + 1);
+      setStepAttempted(false);
     } else {
       onSubmit(formData as FormData);
     }
@@ -207,7 +272,8 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
 
   const handlePrev = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      setCurrentStep((prev) => Math.max(0, prev - 1));
+      setStepAttempted(false);
     }
   };
 
@@ -569,6 +635,21 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
           )}
         </div>
 
+        {stepAttempted && missingFields.length > 0 && (
+          <div className="px-4 sm:px-6 pb-2">
+            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <AlertCircle className="w-4 h-4 mt-0.5" />
+              <span>
+                Preencha:{" "}
+                {missingFields
+                  .map((field) => FIELD_LABELS[field] || field)
+                  .join(", ")}
+                .
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="bg-secondary px-4 sm:px-6 py-3 sm:py-4 flex gap-2 sm:gap-3 justify-between rounded-b-lg border-t border-border">
           <Button
             variant="outline"
@@ -581,7 +662,8 @@ function ChatBot({ onSubmit }: { onSubmit: (data: FormData) => void }) {
 
           <Button
             onClick={handleNext}
-            className="flex-1 sm:flex-none bg-accent hover:bg-accent/90 text-accent-foreground flex items-center justify-center gap-2 text-sm"
+            disabled={!canProceed}
+            className="flex-1 sm:flex-none bg-accent hover:bg-accent/90 text-accent-foreground flex items-center justify-center gap-2 text-sm disabled:opacity-60"
           >
             {currentStep === STEPS.length - 1 ? "Confirmar" : "Próximo"}
             {currentStep < STEPS.length - 1 && (

@@ -9,15 +9,29 @@ export default function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<
     Employee | undefined
   >();
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [showForm, setShowForm] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleSave = () => {
     setEditingEmployee(undefined);
-    setRefreshKey((prev) => prev + 1);
+    setShowForm(false);
+    // Trigger refresh da lista
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   const handleAdd = () => {
     setEditingEmployee(undefined);
+    setShowForm(true);
+  };
+
+  const handleEdit = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setEditingEmployee(undefined);
+    setShowForm(false);
   };
 
   return (
@@ -32,29 +46,22 @@ export default function EmployeesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {editingEmployee || (refreshKey === 0 && !editingEmployee) ? (
+        {showForm && (
           <div className="lg:col-span-1">
-            {!editingEmployee ? (
-              <EmployeeForm
-                onSave={handleSave}
-                onCancel={() => setEditingEmployee(undefined)}
-              />
-            ) : (
-              <EmployeeForm
-                key={editingEmployee.id}
-                employee={editingEmployee}
-                onSave={handleSave}
-                onCancel={() => setEditingEmployee(undefined)}
-              />
-            )}
+            <EmployeeForm
+              key={editingEmployee?.id || "new"}
+              employee={editingEmployee}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
           </div>
-        ) : null}
+        )}
 
-        <div className={editingEmployee ? "lg:col-span-2" : "lg:col-span-3"}>
+        <div className={showForm ? "lg:col-span-2" : "lg:col-span-3"}>
           <EmployeesList
-            key={refreshKey}
-            onEdit={setEditingEmployee}
+            onEdit={handleEdit}
             onAdd={handleAdd}
+            refreshTrigger={refreshTrigger}
           />
         </div>
       </div>
